@@ -1,7 +1,17 @@
 spring:
   application:
     name: tinterest
+
   datasource:
-    url:
-    username:
-    password:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/tinterest_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+
+server:
+  port: 8443
+  ssl:
+    enabled: true
+    key-store: classpath:keystore.p12
+    key-store-password: ${SSL_KEYSTORE_PASSWORD}
+    key-store-type: PKCS12
+    key-alias: tinterest
