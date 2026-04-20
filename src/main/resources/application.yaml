@@ -1,3 +1,7 @@
 spring:
   application:
     name: tinterest
+  datasource:
+    url:
+    username:
+    password:
