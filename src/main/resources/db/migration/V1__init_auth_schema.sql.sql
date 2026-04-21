@@ -29,11 +29,11 @@ CREATE TABLE users (
 );
 
 CREATE TABLE refresh_tokens (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     user_id BIGINT NOT NULL,
 
-    token_hash TEXT NOT NULL,
+    token_hash TEXT NOT NULL UNIQUE,
 
     family_id UUID NOT NULL,
 
@@ -43,20 +43,24 @@ CREATE TABLE refresh_tokens (
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    CONSTRAINT fk_refresh_tokens_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_family_id ON refresh_tokens(family_id);
+
 CREATE TABLE email_verifications (
-    id BIGSERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
 
-     user_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
 
-     code_hash TEXT NOT NULL,
+    code_hash TEXT NOT NULL,
 
-     expires_at TIMESTAMP NOT NULL,
-     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-     attempts INTEGER NOT NULL DEFAULT 0,
+    attempts INTEGER NOT NULL DEFAULT 0,
 
-     CONSTRAINT fk_email_verifications_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    CONSTRAINT uq_email_verifications_user_id UNIQUE (user_id),
+    CONSTRAINT fk_email_verifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );

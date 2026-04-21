@@ -6,7 +6,18 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5433/tinterest_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
-
+  mail:
+    host: smtp.mail.ru
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 server:
   port: 8443
   ssl:
