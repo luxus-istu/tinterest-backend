@@ -1,7 +1,7 @@
 package com.luxus.tinterest.exception;
 
+import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,13 +28,5 @@ public class GlobalExceptionHandler {
                         errors
                 )
         );
-    }
-    @ExceptionHandler(UserAlreadyRegisteredException.class)
-    public ResponseEntity<ErrorResponse> handleUserAlreadyRegistered(UserAlreadyRegisteredException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(new ErrorResponse(
-                ErrorCode.EMAIL_ALREADY_EXISTS.name(),
-                ex.getMessage(),
-                null
-        ));
     }
 }

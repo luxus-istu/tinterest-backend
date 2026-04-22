@@ -3,7 +3,7 @@ package com.luxus.tinterest.service;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
 import com.luxus.tinterest.entity.Role;
 import com.luxus.tinterest.entity.User;
-import com.luxus.tinterest.exception.UserAlreadyRegisteredException;
+import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import com.luxus.tinterest.mapper.UserMapper;
 import com.luxus.tinterest.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
