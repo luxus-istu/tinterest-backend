@@ -1,5 +1,6 @@
 package com.luxus.tinterest.exception;
 
+import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,5 +29,10 @@ public class GlobalExceptionHandler {
                         errors
                 )
         );
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ErrorCode.USER_NOT_FOUND.name(), ex.getMessage(), null));
     }
 }

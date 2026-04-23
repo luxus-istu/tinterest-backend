@@ -1,5 +1,7 @@
 package com.luxus.tinterest.controller;
 
+import com.luxus.tinterest.dto.email.EmailResendRequestDto;
+import com.luxus.tinterest.dto.email.EmailResendResponseDto;
 import com.luxus.tinterest.dto.email.EmailVerifyRequestDto;
 import com.luxus.tinterest.dto.email.EmailVerifyResponseDto;
 import com.luxus.tinterest.service.AuthService;
@@ -24,4 +26,9 @@ public class EmailVerificationController {
         return ResponseEntity.ok(new EmailVerifyResponseDto("Email подтверждён"));
     }
 
+    @PostMapping("/auth/email/resend")
+    public ResponseEntity<EmailResendResponseDto> emailResend(@Valid @RequestBody EmailResendRequestDto emailResendRequestDto) {
+        authService.resendEmailCode(emailResendRequestDto);
+        return ResponseEntity.ok(new EmailResendResponseDto("Код отправлен повторно"));
+    }
 }

@@ -1,5 +1,6 @@
 package com.luxus.tinterest.service;
 
+import com.luxus.tinterest.dto.email.EmailResendRequestDto;
 import com.luxus.tinterest.dto.email.EmailVerifyRequestDto;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
 import com.luxus.tinterest.entity.User;
@@ -22,5 +23,10 @@ public class AuthService {
 
     public void verifyEmailCode(EmailVerifyRequestDto emailVerifyDto) {
         emailVerificationService.verifyCode(emailVerifyDto.getEmail(), emailVerifyDto.getCode());
+    }
+
+    public void resendEmailCode(EmailResendRequestDto emailResendRequestDto) {
+        String code = emailVerificationService.resendCode(emailResendRequestDto.getEmail());
+        emailService.sendCode(emailResendRequestDto.getEmail(), code);
     }
 }

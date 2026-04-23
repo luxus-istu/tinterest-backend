@@ -2,6 +2,7 @@ package com.luxus.tinterest.service;
 
 import com.luxus.tinterest.entity.EmailVerification;
 import com.luxus.tinterest.entity.User;
+import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.verify.EmailAlreadyVerifiedException;
 import com.luxus.tinterest.exception.verify.InvalidVerificationCodeException;
 import com.luxus.tinterest.exception.verify.TooManyAttemptsException;
@@ -46,7 +47,7 @@ public class EmailVerificationService {
         return code;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = InvalidVerificationCodeException.class)
     public void verifyCode(String email, String code) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(InvalidVerificationCodeException::new);
@@ -68,7 +69,6 @@ public class EmailVerificationService {
         }
 
         verification.setAttempts(verification.getAttempts() + 1);
-        emailVerificationRepository.save(verification);
 
         if (!codeHasher.matches(code, verification.getCodeHash())) {
             throw new InvalidVerificationCodeException();
@@ -77,6 +77,16 @@ public class EmailVerificationService {
         user.setEmailVerified(true);
         userRepository.save(user);
         emailVerificationRepository.delete(verification);
+    }
+
+    @Transactional
+    public String resendCode(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(UserNotFoundException::new);
+
+        if (user.isEmailVerified()) throw new EmailAlreadyVerifiedException();
+
+        return generateAndSave(user);
     }
 
 
