@@ -26,3 +26,10 @@ server:
     key-store-password: ${SSL_KEYSTORE_PASSWORD}
     key-store-type: PKCS12
     key-alias: tinterest
+
+app:
+  jwt:
+    private-key: classpath:keys/private.pem
+    public-key: classpath:keys/public.pem
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-days: 15
