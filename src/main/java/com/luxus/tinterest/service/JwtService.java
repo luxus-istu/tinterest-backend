@@ -1,6 +1,7 @@
 package com.luxus.tinterest.service;
 
 import com.luxus.tinterest.entity.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -41,8 +42,16 @@ public class JwtService {
                 .claim("role", user.getRole().name())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(privateKey)   // RS256 подхватывается автоматически
+                .signWith(privateKey)
                 .compact();
+    }
+
+    public Claims validateAndExtract(String token) {
+        return Jwts.parser()
+                .verifyWith(publicKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
 

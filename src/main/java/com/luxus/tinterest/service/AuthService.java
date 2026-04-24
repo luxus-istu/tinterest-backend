@@ -45,4 +45,14 @@ public class AuthService {
 
         return Map.of("accessToken", accessToken, "refreshToken", refreshToken);
     }
+
+    public Map<String, String> refresh(String refreshToken) {
+        RefreshTokenService.RotateResult result = refreshTokenService.rotate(refreshToken);
+
+        User user = userService.findById(result.userId());
+
+        String accessToken = jwtService.generateAccessToken(user);
+
+        return Map.of("accessToken", accessToken, "refreshToken", result.rawToken());
+    }
 }
