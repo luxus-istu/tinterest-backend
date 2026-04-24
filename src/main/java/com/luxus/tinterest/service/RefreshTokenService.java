@@ -7,14 +7,13 @@ import com.luxus.tinterest.exception.login.RefreshTokenExpiredException;
 import com.luxus.tinterest.exception.login.RefreshTokenReusedException;
 import com.luxus.tinterest.exception.login.RefreshTokenRevokedException;
 import com.luxus.tinterest.repository.RefreshTokenRepository;
-import com.luxus.tinterest.util.CodeHasher;
+import com.luxus.tinterest.util.Sha256Hasher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -22,7 +21,7 @@ import java.util.UUID;
 public class RefreshTokenService {
 
     private final RefreshTokenRepository refreshTokenRepository;
-    private final CodeHasher codeHasher;
+    private final Sha256Hasher sha256Hasher;
 
     @Value("${app.jwt.refresh-token-expiration-days:15}")
     private int expirationDays;
@@ -32,7 +31,7 @@ public class RefreshTokenService {
         UUID familyId = UUID.randomUUID();
 
         String rawToken = UUID.randomUUID().toString();
-        String tokenHash = codeHasher.hash(rawToken);
+        String tokenHash = sha256Hasher.hash(rawToken);
 
         RefreshToken refreshToken = RefreshToken.builder()
                 .id(UUID.randomUUID())
@@ -49,7 +48,7 @@ public class RefreshTokenService {
 
     @Transactional(noRollbackFor = RefreshTokenReusedException.class)
     public RotateResult rotate(String rawToken) {
-        String tokenHash = codeHasher.hash(rawToken);
+        String tokenHash = sha256Hasher.hash(rawToken);
 
         RefreshToken existing = refreshTokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(InvalidRefreshTokenException::new);
@@ -71,7 +70,7 @@ public class RefreshTokenService {
         refreshTokenRepository.save(existing);
 
         String newRawToken = UUID.randomUUID().toString();
-        String newTokenHash = codeHasher.hash(newRawToken);
+        String newTokenHash = sha256Hasher.hash(newRawToken);
 
         RefreshToken newToken = RefreshToken.builder()
                 .id(UUID.randomUUID())
@@ -84,6 +83,16 @@ public class RefreshTokenService {
         refreshTokenRepository.save(newToken);
 
         return new RotateResult(newRawToken, newToken.getUserId());
+    }
+
+    @Transactional
+    public void revoke(String rawToken) {
+        String tokenHash = sha256Hasher.hash(rawToken);
+
+        RefreshToken token = refreshTokenRepository.findByTokenHash(tokenHash)
+                .orElseThrow(InvalidRefreshTokenException::new);
+
+        refreshTokenRepository.revokeAllByFamilyId(token.getFamilyId());
     }
 
     public record RotateResult(String rawToken, Long userId) {}

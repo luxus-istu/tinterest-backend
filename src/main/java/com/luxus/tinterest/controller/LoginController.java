@@ -70,6 +70,23 @@ public class LoginController {
         return ResponseEntity.ok(new RefreshResponseDto(tokens.get("accessToken")));
     }
 
+    @PostMapping("/auth/logout")
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        extractRefreshCookie(request).ifPresent(authService::logout);
+
+        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
+                .httpOnly(true)
+                .secure(true)
+                .path("/v1/auth")
+                .maxAge(0)
+                .sameSite("Strict")
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+
+        return ResponseEntity.noContent().build();
+    }
+
     private Optional<String> extractRefreshCookie(HttpServletRequest request) {
         if (request.getCookies() == null) return Optional.empty();
         return Arrays.stream(request.getCookies())

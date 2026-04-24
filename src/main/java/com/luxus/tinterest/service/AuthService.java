@@ -9,7 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -54,5 +53,9 @@ public class AuthService {
         String accessToken = jwtService.generateAccessToken(user);
 
         return Map.of("accessToken", accessToken, "refreshToken", result.rawToken());
+    }
+
+    public void logout(String rawRefreshToken) {
+        refreshTokenService.revoke(rawRefreshToken);
     }
 }
