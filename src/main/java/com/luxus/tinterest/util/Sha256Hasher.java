@@ -8,7 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 @Component
-public class CodeHasher {
+public class Sha256Hasher {
     public String hash(String code) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");

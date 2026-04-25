@@ -9,7 +9,7 @@ import com.luxus.tinterest.exception.verify.TooManyAttemptsException;
 import com.luxus.tinterest.exception.verify.VerificationCodeExpiredException;
 import com.luxus.tinterest.repository.EmailVerificationRepository;
 import com.luxus.tinterest.repository.UserRepository;
-import com.luxus.tinterest.util.CodeHasher;
+import com.luxus.tinterest.util.Sha256Hasher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +27,7 @@ public class EmailVerificationService {
     private final EmailVerificationRepository emailVerificationRepository;
     private final UserRepository userRepository;
 
-    private final CodeHasher codeHasher;
+    private final Sha256Hasher sha256Hasher;
 
     @Transactional
     public String generateAndSave(User user) {
@@ -37,7 +37,7 @@ public class EmailVerificationService {
                 .findByUser(user)
                 .orElse(EmailVerification.builder().user(user).build());
 
-        verification.setCodeHash(codeHasher.hash(code));
+        verification.setCodeHash(sha256Hasher.hash(code));
         verification.setCreatedAt(Instant.now());
         verification.setExpiresAt(Instant.now().plusSeconds(CODE_TTL_SECONDS));
         verification.setAttempts(0);
@@ -70,7 +70,7 @@ public class EmailVerificationService {
 
         verification.setAttempts(verification.getAttempts() + 1);
 
-        if (!codeHasher.matches(code, verification.getCodeHash())) {
+        if (!sha256Hasher.matches(code, verification.getCodeHash())) {
             throw new InvalidVerificationCodeException();
         }
 

@@ -3,6 +3,10 @@ package com.luxus.tinterest.service;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
 import com.luxus.tinterest.entity.Role;
 import com.luxus.tinterest.entity.User;
+import com.luxus.tinterest.exception.common.UserNotFoundException;
+import com.luxus.tinterest.exception.login.EmailNotVerifiedException;
+import com.luxus.tinterest.exception.login.InvalidCredentialsException;
+import com.luxus.tinterest.exception.login.UserBlockedException;
 import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import com.luxus.tinterest.mapper.UserMapper;
 import com.luxus.tinterest.repository.UserRepository;
@@ -12,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,5 +40,21 @@ public class UserService {
         userRepository.save(user);
 
         return emailVerificationService.generateAndSave(user);
+    }
+
+    public User login(String email, String password) {
+        User user = userRepository.findByEmail(email).orElseThrow(InvalidCredentialsException::new);
+
+        if (!user.isEmailVerified()) throw new EmailNotVerifiedException();
+
+        if (user.isBlocked()) throw new UserBlockedException();
+
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) throw new InvalidCredentialsException();
+
+        return user;
+    }
+
+    public User findById(Long userId) {
+        return userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
     }
 }
