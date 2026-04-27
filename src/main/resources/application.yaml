@@ -1,9 +1,7 @@
 spring:
   application:
     name: tinterest
-
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5433/tinterest_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
   mail:
@@ -18,18 +16,16 @@ spring:
           auth: true
           starttls:
             enable: true
+
 server:
   port: 8443
   ssl:
     enabled: true
-    key-store: classpath:keystore.p12
     key-store-password: ${SSL_KEYSTORE_PASSWORD}
     key-store-type: PKCS12
     key-alias: tinterest
 
 app:
   jwt:
-    private-key: classpath:keys/private.pem
-    public-key: classpath:keys/public.pem
     access-token-expiration-ms: 900000
     refresh-token-expiration-days: 15

@@ -32,66 +32,42 @@
 ### 1. Клонировать репозиторий
 
 ```bash
-git clone <repository-url>
-cd tinterest
+git clone <url репозитория>
+cd <папка проекта>
 ```
 
-### 2. Настроить переменные окружения
+### 2. Создать файл с переменными окружения
 
-Основные переменные в `.env`:
+```bash
+cp .env.example .env
+```
+
+Открыть `.env` и заполнить значения:
 
 ```env
-# База данных
-POSTGRES_DB=tinterest
-POSTGRES_USER=tinterest_user
-POSTGRES_PASSWORD=your_password
-
-# JWT
-JWT_SECRET=your_jwt_secret_key
-JWT_ACCESS_EXPIRATION_MS=900000
-JWT_REFRESH_EXPIRATION_MS=604800000
-
-# MinIO
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-MINIO_BUCKET=tinterest-images
-
-# Redis
-REDIS_HOST=redis
-REDIS_PORT=6379
-
-# Почта (для верификации аккаунтов)
-MAIL_HOST=smtp.your-domain.com
-MAIL_PORT=587
-MAIL_USERNAME=noreply@your-domain.com
-MAIL_PASSWORD=your_mail_password
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+MAIL_USERNAME=почта@mail.ru
+MAIL_PASSWORD=пароль_от_почты
+SSL_KEYSTORE_PASSWORD=пароль_от_keystore
 ```
 
-### 3. Запустить приложение
+### 3. Создать папку `secrets/` и положить в нее ключ .p12 для https и rsa ключи для подписи и проверки jwt
+
+Положить её в корень проекта. Структура должна быть такой:
+
+```
+secrets/
+├── keystore.p12
+└── keys/
+    ├── private.pem
+    └── public.pem
+```
+
+### 4. Запустить
 
 ```bash
-docker compose up -d
+docker-compose up --build
 ```
 
-После запуска будут доступны:
-
-| Сервис | Адрес |
-|--------|-------|
-| Фронтенд | http://localhost:3000 |
-| Бэкенд API | http://localhost:8080 |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
-| MinIO Console | http://localhost:9001 |
-
-### 4. Остановить приложение
-
-```bash
-docker compose down
-```
-
-## Регистрация и вход
-
-Регистрация доступна только для сотрудников с корпоративной почтой. После регистрации на указанный email придёт письмо для верификации аккаунта. После подтверждения при первом входе потребуется заполнить анкету интересов — без этого доступ к функциям приложения недоступен.
-
-## API документация
-
-Документация по всем эндпоинтам доступна через Swagger UI после запуска приложения: `http://localhost:8080/swagger-ui.html`
+Backend будет доступен по адресу: **https://localhost:8443**

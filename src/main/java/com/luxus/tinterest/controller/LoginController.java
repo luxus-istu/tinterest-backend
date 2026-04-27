@@ -41,7 +41,7 @@ public class LoginController {
                 .secure(true)
                 .path("/v1/auth")
                 .maxAge(Duration.ofDays(15))
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
@@ -62,7 +62,7 @@ public class LoginController {
                 .secure(true)
                 .path("/v1/auth")
                 .maxAge(Duration.ofDays(15))
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
@@ -79,7 +79,7 @@ public class LoginController {
                 .secure(true)
                 .path("/v1/auth")
                 .maxAge(0)
-                .sameSite("Strict")
+                .sameSite("Lax")
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());

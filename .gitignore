@@ -32,9 +32,7 @@ build/
 ### VS Code ###
 .vscode/
 
-# SSL keystore
+.env
+src/main/resources/keys/
 src/main/resources/keystore.p12
-
-# RSA keys
-src/main/resources/keys/private.pem
-src/main/resources/keys/public.pem
+secrets/

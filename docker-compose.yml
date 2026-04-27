@@ -2,13 +2,34 @@ services:
   tinterest-db:
     image: postgres:18
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: tinterest_db
     ports:
       - "5433:5432"
     volumes:
       - db-data:/var/lib/postgresql
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  tinterest-app:
+    build: .
+    ports:
+      - "8443:8443"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    volumes:
+      - ./secrets/keystore.p12:/app/secrets/keystore.p12:ro
+      - ./secrets/keys/private.pem:/app/secrets/keys/private.pem:ro
+      - ./secrets/keys/public.pem:/app/secrets/keys/public.pem:ro
+    depends_on:
+      tinterest-db:
+        condition: service_healthy
 
 volumes:
   db-data:

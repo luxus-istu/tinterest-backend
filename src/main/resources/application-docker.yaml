@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://tinterest-db:5432/tinterest_db
+
+server:
+  ssl:
+    key-store: file:/app/secrets/keystore.p12
+
+app:
+  jwt:
+    private-key: file:/app/secrets/keys/private.pem
+    public-key: file:/app/secrets/keys/public.pem
