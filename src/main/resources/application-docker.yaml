@@ -10,3 +10,5 @@ app:
   jwt:
     private-key: file:/app/secrets/keys/private.pem
     public-key: file:/app/secrets/keys/public.pem
+  minio:
+    endpoint: http://minio:9000

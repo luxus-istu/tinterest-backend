@@ -23,12 +23,12 @@ public class EmailVerificationController {
     @PostMapping("/auth/email/verify")
     public ResponseEntity<EmailVerifyResponseDto> emailVerify(@Valid @RequestBody EmailVerifyRequestDto emailVerifyDto) {
         authService.verifyEmailCode(emailVerifyDto);
-        return ResponseEntity.ok(new EmailVerifyResponseDto("Email подтверждён"));
+        return ResponseEntity.ok(new EmailVerifyResponseDto("Email has been verified"));
     }
 
     @PostMapping("/auth/email/resend")
     public ResponseEntity<EmailResendResponseDto> emailResend(@Valid @RequestBody EmailResendRequestDto emailResendRequestDto) {
         authService.resendEmailCode(emailResendRequestDto);
-        return ResponseEntity.ok(new EmailResendResponseDto("Код отправлен повторно"));
+        return ResponseEntity.ok(new EmailResendResponseDto("Verification code has been resent"));
     }
 }

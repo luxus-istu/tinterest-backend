@@ -5,6 +5,8 @@ import lombok.*;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -36,7 +38,23 @@ public class User {
 
     private String language;
 
+    private String city;
+
     private String about;
+
+    @Column(name = "job_title")
+    private String jobTitle;
+
+    private String department;
+
+    @Column(name = "communication_style")
+    private String communicationStyle;
+
+    @Column(name = "preferred_contact_method")
+    private String preferredContactMethod;
+
+    @Column(name = "meeting_preference")
+    private String meetingPreference;
 
     @Column(name = "avatar_url")
     private String avatarUrl;
@@ -54,6 +72,16 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @Builder.Default
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_interests",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "interest_id")
+    )
+    @OrderBy("name ASC")
+    private Set<Interest> interests = new LinkedHashSet<>();
 
     private boolean blocked = false;
 

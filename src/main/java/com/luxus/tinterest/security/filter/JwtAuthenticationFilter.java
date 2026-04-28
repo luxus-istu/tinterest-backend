@@ -59,14 +59,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        } catch (ExpiredJwtException e) {
-            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_EXPIRED", "Access token истек");
+        } catch (ExpiredJwtException exception) {
+            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_EXPIRED", "Access token has expired");
             return;
-        } catch (MalformedJwtException | SignatureException e) {
-            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_INVALID", "Access token невалидный");
+        } catch (MalformedJwtException | SignatureException exception) {
+            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_INVALID", "Access token is invalid");
             return;
-        } catch (JwtException e) {
-            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_ERROR", "Ошибка в access token");
+        } catch (JwtException exception) {
+            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "TOKEN_ERROR", "Failed to process access token");
             return;
         }
 
@@ -86,5 +86,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         objectMapper.writeValue(response.getWriter(), body);
     }
-
 }

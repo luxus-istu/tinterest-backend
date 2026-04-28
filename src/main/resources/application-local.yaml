@@ -2,11 +2,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5433/tinterest_db
 
-server:
-  ssl:
-    key-store: classpath:keystore.p12
-
 app:
-  jwt:
-    private-key: classpath:keys/private.pem
-    public-key: classpath:keys/public.pem
+  minio:
+    endpoint: http://localhost:9000
+    public-endpoint: http://localhost:9000

@@ -8,8 +8,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPrivateKey;
@@ -33,7 +33,6 @@ public class JwtService {
                       @Value("${app.jwt.public-key}") Resource publicKeyResource) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
         this.privateKey = loadPrivateKey(privateKeyResource);
         this.publicKey = loadPublicKey(publicKeyResource);
-
     }
 
     public String generateAccessToken(User user) {
@@ -56,8 +55,7 @@ public class JwtService {
 
 
     private RSAPrivateKey loadPrivateKey(Resource privateKeyResource) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        System.out.println("++++++++++" + privateKeyResource.getURI());
-        String pem = Files.readString(Path.of(privateKeyResource.getURI()))
+        String pem = readPem(privateKeyResource)
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
                 .replaceAll("\\s", "");
@@ -68,8 +66,7 @@ public class JwtService {
     }
 
     private RSAPublicKey loadPublicKey(Resource publicKeyResource) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        System.out.println("++++++++++" + publicKeyResource.getURI());
-        String pem = Files.readString(Path.of(publicKeyResource.getURI()))
+        String pem = readPem(publicKeyResource)
                 .replace("-----BEGIN PUBLIC KEY-----", "")
                 .replace("-----END PUBLIC KEY-----", "")
                 .replaceAll("\\s", "");
@@ -77,6 +74,12 @@ public class JwtService {
         byte[] decoded = Base64.getDecoder().decode(pem);
         X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
         return (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(spec);
+    }
+
+    private String readPem(Resource resource) throws IOException {
+        try (InputStream inputStream = resource.getInputStream()) {
+            return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+        }
     }
 
 }

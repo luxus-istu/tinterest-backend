@@ -2,7 +2,11 @@ package com.luxus.tinterest.dto.email;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
@@ -11,10 +15,10 @@ import lombok.*;
 @ToString
 public class EmailVerifyRequestDto {
 
-    @Email(message = "Некорректный email")
-    @NotBlank(message = "Email обязателен")
+    @Email(message = "Email must be valid")
+    @NotBlank(message = "Email is required")
     private String email;
 
-    @NotBlank(message = "Поле code обязателен")
+    @NotBlank(message = "Verification code is required")
     private String code;
 }

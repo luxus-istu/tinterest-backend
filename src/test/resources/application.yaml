@@ -1,0 +1,10 @@
+server:
+  ssl:
+    enabled: false
+
+app:
+  mail:
+    enabled: false
+  jwt:
+    private-key: classpath:test-keys/private.pem
+    public-key: classpath:test-keys/public.pem
