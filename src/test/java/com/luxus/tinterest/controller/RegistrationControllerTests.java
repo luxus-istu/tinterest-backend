@@ -2,7 +2,6 @@ package com.luxus.tinterest.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
-import com.luxus.tinterest.dto.registration.RegistrationResponseDto;
 import com.luxus.tinterest.entity.Gender;
 import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import com.luxus.tinterest.exception.handler.RegistrationHandler;
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -63,6 +61,10 @@ class RegistrationControllerTests {
         validRequest.setGender(Gender.MALE);
         validRequest.setLanguage("en");
     }
+
+    // -------------------------------------------------------------------------
+    // POST /v1/auth/register
+    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Should successfully register user with valid data")
