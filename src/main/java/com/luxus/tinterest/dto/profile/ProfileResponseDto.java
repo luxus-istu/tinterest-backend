@@ -17,9 +17,9 @@ public record ProfileResponseDto(
         String about,
         String jobTitle,
         String department,
-        String communicationStyle,
-        String preferredContactMethod,
-        String meetingPreference,
+        String goal,
+        String personalityType,
+        List<String> timeSlots,
         String avatarUrl,
         List<String> interests,
         boolean hasFilledProfile

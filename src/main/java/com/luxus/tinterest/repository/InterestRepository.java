@@ -12,6 +12,8 @@ import java.util.List;
 @Repository
 public interface InterestRepository extends JpaRepository<Interest, Long> {
 
+    List<Interest> findAllByOrderByNameAsc();
+
     @Query("select i from Interest i where lower(i.name) in :normalizedNames")
     List<Interest> findAllByNormalizedNames(@Param("normalizedNames") Collection<String> normalizedNames);
 }
