@@ -2,10 +2,13 @@ package com.luxus.tinterest.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -47,14 +50,14 @@ public class User {
 
     private String department;
 
-    @Column(name = "communication_style")
-    private String communicationStyle;
+    private String goal;
 
-    @Column(name = "preferred_contact_method")
-    private String preferredContactMethod;
+    @Column(name = "personality_type")
+    private String personalityType;
 
-    @Column(name = "meeting_preference")
-    private String meetingPreference;
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "time_slots", columnDefinition = "text[]")
+    private List<String> timeSlots;
 
     @Column(name = "avatar_url")
     private String avatarUrl;

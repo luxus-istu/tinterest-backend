@@ -9,6 +9,7 @@ import com.luxus.tinterest.dto.profile.WorkInfoUpdateRequestDto;
 import com.luxus.tinterest.entity.Interest;
 import com.luxus.tinterest.entity.User;
 import com.luxus.tinterest.exception.common.UserNotFoundException;
+import com.luxus.tinterest.exception.profile.UnknownInterestsException;
 import com.luxus.tinterest.repository.InterestRepository;
 import com.luxus.tinterest.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -48,11 +49,9 @@ public class ProfileService {
     @Transactional
     public ProfileResponseDto completeProfile(Long userId, CompleteProfileRequestDto request) {
         User user = loadUserWithInterests(userId);
-        applyBasicInfo(user, request.firstName(), request.lastName(), request.middleName(), request.dateOfBirth(),
-                request.gender(), request.language(), request.city(), request.about());
+        applyQuestionnaireInfo(user, request.city(), request.about());
         applyWorkInfo(user, request.jobTitle(), request.department());
-        applyCommunicationPreferences(user, request.communicationStyle(), request.preferredContactMethod(),
-                request.meetingPreference());
+        applyCommunicationPreferences(user, request.goal(), request.personalityType(), request.timeSlots());
         replaceInterests(user, request.interests());
         user.setHasFilledProfile(true);
         return toProfileResponse(userRepository.save(user));
@@ -76,8 +75,7 @@ public class ProfileService {
     @Transactional
     public ProfileResponseDto updateCommunication(Long userId, CommunicationPreferencesUpdateRequestDto request) {
         User user = loadUserWithInterests(userId);
-        applyCommunicationPreferences(user, request.communicationStyle(), request.preferredContactMethod(),
-                request.meetingPreference());
+        applyCommunicationPreferences(user, request.goal(), request.personalityType(), request.timeSlots());
         return toProfileResponse(userRepository.save(user));
     }
 
@@ -112,16 +110,20 @@ public class ProfileService {
         user.setAbout(cleanOptionalValue(about));
     }
 
+    private void applyQuestionnaireInfo(User user, String city, String about) {
+        user.setCity(cleanValue(city));
+        user.setAbout(cleanOptionalValue(about));
+    }
+
     private void applyWorkInfo(User user, String jobTitle, String department) {
         user.setJobTitle(cleanValue(jobTitle));
         user.setDepartment(cleanValue(department));
     }
 
-    private void applyCommunicationPreferences(User user, String communicationStyle, String preferredContactMethod,
-                                               String meetingPreference) {
-        user.setCommunicationStyle(cleanValue(communicationStyle));
-        user.setPreferredContactMethod(cleanValue(preferredContactMethod));
-        user.setMeetingPreference(cleanValue(meetingPreference));
+    private void applyCommunicationPreferences(User user, String goal, String personalityType, List<String> timeSlots) {
+        user.setGoal(cleanValue(goal));
+        user.setPersonalityType(cleanValue(personalityType));
+        user.setTimeSlots(cleanValues(timeSlots));
     }
 
     private void replaceInterests(User user, List<String> requestedInterests) {
@@ -141,17 +143,15 @@ public class ProfileService {
                         Function.identity()
                 ));
 
-        List<Interest> newInterests = new ArrayList<>();
+        List<String> unknownInterests = new ArrayList<>();
         for (Map.Entry<String, String> entry : normalizedToDisplay.entrySet()) {
             if (!existingByNormalizedName.containsKey(entry.getKey())) {
-                Interest interest = Interest.builder().name(entry.getValue()).build();
-                newInterests.add(interest);
-                existingByNormalizedName.put(entry.getKey(), interest);
+                unknownInterests.add(entry.getValue());
             }
         }
 
-        if (!newInterests.isEmpty()) {
-            interestRepository.saveAll(newInterests);
+        if (!unknownInterests.isEmpty()) {
+            throw new UnknownInterestsException(unknownInterests);
         }
 
         Set<Interest> orderedInterests = new LinkedHashSet<>();
@@ -178,9 +178,9 @@ public class ProfileService {
                 user.getAbout(),
                 user.getJobTitle(),
                 user.getDepartment(),
-                user.getCommunicationStyle(),
-                user.getPreferredContactMethod(),
-                user.getMeetingPreference(),
+                user.getGoal(),
+                user.getPersonalityType(),
+                user.getTimeSlots() == null ? List.of() : List.copyOf(user.getTimeSlots()),
                 user.getAvatarUrl(),
                 interests,
                 user.isHasFilledProfile()
@@ -194,5 +194,17 @@ public class ProfileService {
     private String cleanOptionalValue(String value) {
         String cleaned = cleanValue(value);
         return cleaned == null || cleaned.isBlank() ? null : cleaned;
+    }
+
+    private List<String> cleanValues(List<String> values) {
+        LinkedHashMap<String, String> normalizedToDisplay = values.stream()
+                .map(this::cleanValue)
+                .collect(Collectors.toMap(
+                        value -> value.toLowerCase(Locale.ROOT),
+                        Function.identity(),
+                        (left, right) -> left,
+                        LinkedHashMap::new
+                ));
+        return List.copyOf(normalizedToDisplay.values());
     }
 }
