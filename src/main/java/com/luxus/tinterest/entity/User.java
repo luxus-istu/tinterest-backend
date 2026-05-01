@@ -59,6 +59,13 @@ public class User {
     @Column(name = "time_slots", columnDefinition = "text[]")
     private List<String> timeSlots;
 
+    // Не уверен что могу вмешиваться в основную логику, так что оставлю как есть
+    // Без этого тесты RegistrationIntegrationTests не выполняются - QA
+    //
+    // @JdbcTypeCode(SqlTypes.ARRAY)
+    // @Column(name = "time_slots")
+    // private List<String> timeSlots;
+
     @Column(name = "avatar_url")
     private String avatarUrl;
 

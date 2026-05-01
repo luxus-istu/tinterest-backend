@@ -43,6 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 
+// Скорее всего не выполнятся из-за: 
+// Отсутствует обработчик AccessDeniedException, добавьте его как вам надо
+// - QA
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Profile Controller Tests")
