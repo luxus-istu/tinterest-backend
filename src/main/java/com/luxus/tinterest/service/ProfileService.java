@@ -8,6 +8,7 @@ import com.luxus.tinterest.dto.profile.ProfileResponseDto;
 import com.luxus.tinterest.dto.profile.WorkInfoUpdateRequestDto;
 import com.luxus.tinterest.entity.Interest;
 import com.luxus.tinterest.entity.User;
+import com.luxus.tinterest.enums.Gender;
 import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.profile.UnknownInterestsException;
 import com.luxus.tinterest.repository.InterestRepository;
@@ -98,7 +99,7 @@ public class ProfileService {
     }
 
     private void applyBasicInfo(User user, String firstName, String lastName, String middleName,
-                                LocalDate dateOfBirth, com.luxus.tinterest.entity.Gender gender,
+                                LocalDate dateOfBirth, Gender gender,
                                 String language, String city, String about) {
         user.setFirstName(cleanValue(firstName));
         user.setLastName(cleanValue(lastName));

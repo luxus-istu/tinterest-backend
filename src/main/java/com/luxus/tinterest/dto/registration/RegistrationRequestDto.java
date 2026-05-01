@@ -1,6 +1,6 @@
 package com.luxus.tinterest.dto.registration;
 
-import com.luxus.tinterest.entity.Gender;
+import com.luxus.tinterest.enums.Gender;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
