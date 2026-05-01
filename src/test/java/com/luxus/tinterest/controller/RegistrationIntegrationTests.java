@@ -7,6 +7,9 @@ import com.luxus.tinterest.entity.Role;
 import com.luxus.tinterest.entity.User;
 import com.luxus.tinterest.repository.EmailVerificationRepository;
 import com.luxus.tinterest.repository.UserRepository;
+
+import jakarta.persistence.EntityManagerFactory;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +18,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -30,7 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(locations = "classpath:application.yaml")
 @DisplayName("Registration Integration Tests")
 class RegistrationIntegrationTests {
 
@@ -47,6 +48,15 @@ class RegistrationIntegrationTests {
     private EmailVerificationRepository emailVerificationRepository;
 
     private RegistrationRequestDto validRequest;
+
+    @Autowired
+    private EntityManagerFactory emf;
+
+    @Test
+    public void showDdlAuto() {
+        Object value = emf.getProperties().get("hibernate.hbm2ddl.auto");
+        System.out.println("Effective ddl-auto: " + value);
+    }
 
     @BeforeEach
     void setUp() {

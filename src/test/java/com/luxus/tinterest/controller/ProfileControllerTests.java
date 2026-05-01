@@ -13,6 +13,8 @@ import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.handler.ProfileHandler;
 import com.luxus.tinterest.exception.profile.InvalidAvatarFileException;
 import com.luxus.tinterest.service.ProfileService;
+
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -37,6 +41,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Profile Controller Tests")
@@ -62,6 +68,7 @@ class ProfileControllerTests {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(profileController)
                 .setControllerAdvice(new GlobalExceptionHandler(), new ProfileHandler())
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .build();
 
         objectMapper = new ObjectMapper();
@@ -126,6 +133,17 @@ class ProfileControllerTests {
         );
     }
 
+    private void mockAuthentication(Long userId) {
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
     // -------------------------------------------------------------------------
     // GET /v1/profiles/me
     // -------------------------------------------------------------------------
@@ -136,8 +154,9 @@ class ProfileControllerTests {
         Long userId = 1L;
         when(profileService.getMyProfile(userId)).thenReturn(validProfileResponse);
 
-        mockMvc.perform(get("/v1/profiles/me")
-                .principal(() -> userId.toString()))
+        mockAuthentication(userId);
+
+        mockMvc.perform(get("/v1/profiles/me"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.firstName").value("John"))
@@ -160,8 +179,9 @@ class ProfileControllerTests {
         Long userId = 1L;
         doThrow(new UserNotFoundException()).when(profileService).getMyProfile(userId);
 
-        mockMvc.perform(get("/v1/profiles/me")
-                .principal(() -> userId.toString()))
+        mockAuthentication(userId);
+
+        mockMvc.perform(get("/v1/profiles/me"))
                 .andExpect(status().isNotFound());
     }
 
@@ -201,10 +221,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         when(profileService.completeProfile(userId, validCompleteRequest)).thenReturn(validProfileResponse);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCompleteRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validCompleteRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.city").value("New York"))
                 .andExpect(jsonPath("$.goal").value("Career advancement"))
@@ -225,11 +246,10 @@ class ProfileControllerTests {
                 List.of("Monday"),
                 List.of("Java")
         );
-
+        mockAuthentication(userId);
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -248,10 +268,11 @@ class ProfileControllerTests {
                 List.of("Java")
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -261,8 +282,8 @@ class ProfileControllerTests {
         Long userId = 1L;
         CompleteProfileRequestDto request = new CompleteProfileRequestDto(
                 "New York",
+                "Software developer",
                 null,
-                "Senior Developer",
                 "Engineering",
                 "Career advancement",
                 "ENTJ",
@@ -270,10 +291,11 @@ class ProfileControllerTests {
                 List.of("Java")
         );
 
+        mockAuthentication(userId);
+        
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -294,8 +316,7 @@ class ProfileControllerTests {
 
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -314,10 +335,11 @@ class ProfileControllerTests {
                 List.of("Java")
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -338,8 +360,7 @@ class ProfileControllerTests {
 
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -362,10 +383,11 @@ class ProfileControllerTests {
                 List.of("Java")
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -384,10 +406,11 @@ class ProfileControllerTests {
                 List.of()
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -412,10 +435,11 @@ class ProfileControllerTests {
                 tooManyInterests
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -434,10 +458,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         doThrow(new UserNotFoundException()).when(profileService).completeProfile(userId, validCompleteRequest);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCompleteRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validCompleteRequest)))
                 .andExpect(status().isNotFound());
     }
 
@@ -451,10 +476,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         when(profileService.updateBasic(userId, validBasicUpdateRequest)).thenReturn(validProfileResponse);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/basic")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validBasicUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validBasicUpdateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.firstName").value("John"));
     }
@@ -474,10 +500,11 @@ class ProfileControllerTests {
                 "Software developer"
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/basic")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -496,10 +523,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         doThrow(new UserNotFoundException()).when(profileService).updateBasic(userId, validBasicUpdateRequest);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/basic")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validBasicUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validBasicUpdateRequest)))
                 .andExpect(status().isNotFound());
     }
 
@@ -513,10 +541,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         when(profileService.updateWork(userId, validWorkUpdateRequest)).thenReturn(validProfileResponse);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/work")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validWorkUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validWorkUpdateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jobTitle").value("Senior Developer"));
     }
@@ -527,10 +556,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto(null, "Engineering");
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/work")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -542,8 +572,7 @@ class ProfileControllerTests {
 
         mockMvc.perform(put("/v1/profiles/me/work")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -562,10 +591,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         doThrow(new UserNotFoundException()).when(profileService).updateWork(userId, validWorkUpdateRequest);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/work")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validWorkUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validWorkUpdateRequest)))
                 .andExpect(status().isNotFound());
     }
 
@@ -579,10 +609,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         when(profileService.updateCommunication(userId, validCommunicationUpdateRequest)).thenReturn(validProfileResponse);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/communication")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.goal").value("Career advancement"))
                 .andExpect(jsonPath("$.personalityType").value("ENTJ"));
@@ -598,10 +629,11 @@ class ProfileControllerTests {
                 List.of("Monday")
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/communication")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -615,10 +647,11 @@ class ProfileControllerTests {
                 List.of("Monday")
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/communication")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -632,10 +665,11 @@ class ProfileControllerTests {
                 List.of()
         );
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/communication")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -654,10 +688,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         doThrow(new UserNotFoundException()).when(profileService).updateCommunication(userId, validCommunicationUpdateRequest);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/communication")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest)))
                 .andExpect(status().isNotFound());
     }
 
@@ -671,10 +706,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         when(profileService.updateInterests(userId, validInterestsUpdateRequest)).thenReturn(validProfileResponse);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.interests[0]").value("Java"));
     }
@@ -685,10 +721,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         InterestsUpdateRequestDto request = new InterestsUpdateRequestDto(List.of());
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -706,8 +743,7 @@ class ProfileControllerTests {
 
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -726,10 +762,11 @@ class ProfileControllerTests {
         Long userId = 1L;
         doThrow(new UserNotFoundException()).when(profileService).updateInterests(userId, validInterestsUpdateRequest);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest))
-                .principal(() -> userId.toString()))
+                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest)))
                 .andExpect(status().isNotFound());
     }
 
@@ -750,9 +787,10 @@ class ProfileControllerTests {
 
         when(profileService.uploadAvatar(eq(userId), any())).thenReturn(validProfileResponse);
 
+        mockAuthentication(userId);
+
         mockMvc.perform(multipart("/v1/profiles/me/avatar")
-                .file(file)
-                .principal(() -> userId.toString()))
+                .file(file))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.avatarUrl").value("https://example.com/avatar.jpg"));
     }
@@ -770,9 +808,10 @@ class ProfileControllerTests {
 
         doThrow(new InvalidAvatarFileException("Invalid file type")).when(profileService).uploadAvatar(eq(userId), any());
 
+        mockAuthentication(userId);
+
         mockMvc.perform(multipart("/v1/profiles/me/avatar")
-                .file(file)
-                .principal(() -> userId.toString()))
+                .file(file))
                 .andExpect(status().isBadRequest());
     }
 
@@ -804,9 +843,10 @@ class ProfileControllerTests {
 
         doThrow(new UserNotFoundException()).when(profileService).uploadAvatar(eq(userId), any());
 
+        mockAuthentication(userId);
+
         mockMvc.perform(multipart("/v1/profiles/me/avatar")
-                .file(file)
-                .principal(() -> userId.toString()))
+                .file(file))
                 .andExpect(status().isNotFound());
     }
 
@@ -815,8 +855,9 @@ class ProfileControllerTests {
     void testUploadAvatarWithoutFile() throws Exception {
         Long userId = 1L;
 
-        mockMvc.perform(multipart("/v1/profiles/me/avatar")
-                .principal(() -> userId.toString()))
+        mockAuthentication(userId);
+
+        mockMvc.perform(multipart("/v1/profiles/me/avatar"))
                 .andExpect(status().isBadRequest());
     }
 }
