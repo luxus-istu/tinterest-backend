@@ -1,4 +1,4 @@
-package com.luxus.tinterest.entity;
+package com.luxus.tinterest.enums;
 
 public enum Role {
     USER,

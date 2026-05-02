@@ -4,6 +4,7 @@ import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -34,5 +35,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorResponse(ErrorCode.USER_NOT_FOUND.name(), ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException ex) {
+
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorResponse(
+                        "BAD_REQUEST",
+                        "Invalid request format. Please check field values and data types.",
+                        null
+                ));
     }
 }
