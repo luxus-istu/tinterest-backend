@@ -155,7 +155,7 @@ class EmailVerificationControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 410 when verification code is expired")
+    @DisplayName("Should return 400 when verification code is expired")
     void testVerifyWithExpiredCode() throws Exception {
         doThrow(new VerificationCodeExpiredException())
                 .when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
@@ -163,11 +163,11 @@ class EmailVerificationControllerTests {
         mockMvc.perform(post("/v1/auth/email/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validVerifyRequest)))
-                .andExpect(status().isGone());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("Should return 429 when too many verification attempts")
+    @DisplayName("Should return 400 when too many verification attempts")
     void testVerifyWithTooManyAttempts() throws Exception {
         doThrow(new TooManyAttemptsException())
                 .when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
@@ -175,7 +175,7 @@ class EmailVerificationControllerTests {
         mockMvc.perform(post("/v1/auth/email/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validVerifyRequest)))
-                .andExpect(status().isTooManyRequests());
+                .andExpect(status().isBadRequest());
     }
 
     // -------------------------------------------------------------------------

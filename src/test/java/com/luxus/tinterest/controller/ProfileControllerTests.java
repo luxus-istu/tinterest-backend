@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 
 // Скорее всего не выполнятся из-за: 
-// Отсутствует обработчик AccessDeniedException, добавьте его как вам надо
+// По swagger, если полльзователь не авторизован, должен возвращаться код 401, но возвращается 403. Я написал как в swagger.
 // - QA
 
 @ExtendWith(MockitoExtension.class)
@@ -170,10 +170,10 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for get own profile")
+    @DisplayName("Should return 401 when user is not authenticated for get own profile")
     void testGetMyProfileWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/v1/profiles/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -202,6 +202,13 @@ class ProfileControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.firstName").value("John"));
+    }
+
+    @Test
+    @DisplayName("Should return 401 when user is not authenticated for get own profile")
+    void testGetProfileByIdWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/v1/profiles/{userId}", 2L))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -305,7 +312,6 @@ class ProfileControllerTests {
     @Test
     @DisplayName("Should return 400 when goal is missing on complete profile")
     void testCompleteProfileWithoutGoal() throws Exception {
-        Long userId = 1L;
         CompleteProfileRequestDto request = new CompleteProfileRequestDto(
                 "New York",
                 "Software developer",
@@ -349,7 +355,6 @@ class ProfileControllerTests {
     @Test
     @DisplayName("Should return 400 when timeSlots list is empty on complete profile")
     void testCompleteProfileWithoutTimeSlots() throws Exception {
-        Long userId = 1L;
         CompleteProfileRequestDto request = new CompleteProfileRequestDto(
                 "New York",
                 "Software developer",
@@ -447,12 +452,12 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for complete profile")
+    @DisplayName("Should return 401 when user is not authenticated for complete profile")
     void testCompleteProfileWithoutAuthentication() throws Exception {
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validCompleteRequest)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -512,12 +517,12 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for basic profile update")
+    @DisplayName("Should return 401 when user is not authenticated for basic profile update")
     void testUpdateBasicProfileWithoutAuthentication() throws Exception {
         mockMvc.perform(put("/v1/profiles/me/basic")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validBasicUpdateRequest)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -570,7 +575,6 @@ class ProfileControllerTests {
     @Test
     @DisplayName("Should return 400 when department is missing on work info update")
     void testUpdateWorkInfoWithoutDepartment() throws Exception {
-        Long userId = 1L;
         WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto("Senior Developer", null);
 
         mockMvc.perform(put("/v1/profiles/me/work")
@@ -580,12 +584,12 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for work info update")
+    @DisplayName("Should return 401 when user is not authenticated for work info update")
     void testUpdateWorkInfoWithoutAuthentication() throws Exception {
         mockMvc.perform(put("/v1/profiles/me/work")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validWorkUpdateRequest)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -677,12 +681,12 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for communication preferences update")
+    @DisplayName("Should return 401 when user is not authenticated for communication preferences update")
     void testUpdateCommunicationPreferencesWithoutAuthentication() throws Exception {
         mockMvc.perform(put("/v1/profiles/me/communication")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -735,7 +739,6 @@ class ProfileControllerTests {
     @Test
     @DisplayName("Should return 400 when interests exceeds max size on interests update")
     void testUpdateInterestsWithTooManyInterests() throws Exception {
-        Long userId = 1L;
         List<String> tooManyInterests = List.of(
                 "Interest1", "Interest2", "Interest3", "Interest4", "Interest5",
                 "Interest6", "Interest7", "Interest8", "Interest9", "Interest10",
@@ -751,12 +754,12 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for interests update")
+    @DisplayName("Should return 401 when user is not authenticated for interests update")
     void testUpdateInterestsWithoutAuthentication() throws Exception {
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(validInterestsUpdateRequest)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -819,7 +822,7 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for avatar upload")
+    @DisplayName("Should return 401 when user is not authenticated for avatar upload")
     void testUploadAvatarWithoutAuthentication() throws Exception {
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -830,7 +833,7 @@ class ProfileControllerTests {
 
         mockMvc.perform(multipart("/v1/profiles/me/avatar")
                 .file(file))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
