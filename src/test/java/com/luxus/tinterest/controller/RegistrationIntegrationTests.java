@@ -2,8 +2,8 @@ package com.luxus.tinterest.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
-import com.luxus.tinterest.entity.Gender;
-import com.luxus.tinterest.entity.Role;
+import com.luxus.tinterest.enums.Gender;
+import com.luxus.tinterest.enums.Role;
 import com.luxus.tinterest.entity.User;
 import com.luxus.tinterest.repository.EmailVerificationRepository;
 import com.luxus.tinterest.repository.UserRepository;
@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Скорее всего не выполнятся из-за:
-// В модели User столбец time_slots странно настроен, исправьте как вам надо
+// В модели User столбец time_slots , исправьте как вам надо
 // - QA
 
 @ExtendWith(SpringExtension.class)

@@ -45,4 +45,14 @@ class ChatWebSocketControllerTests {
         assertThrows(AccessDeniedException.class,
                 () -> chatWebSocketController.sendMessage(10L, request, null));
     }
+
+    @Test
+    @DisplayName("Should reject WebSocket calls when principal name is not numeric")
+    void testSendMessageWithInvalidPrincipalName() {
+        Principal principal = () -> "not-a-number";
+        MessageSendRequestDto request = new MessageSendRequestDto(MessageType.TEXT, "Hello via websocket");
+
+        assertThrows(NumberFormatException.class,
+                () -> chatWebSocketController.sendMessage(10L, request, principal));
+    }
 }

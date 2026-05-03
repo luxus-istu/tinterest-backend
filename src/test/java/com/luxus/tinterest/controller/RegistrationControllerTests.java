@@ -2,7 +2,7 @@ package com.luxus.tinterest.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
-import com.luxus.tinterest.entity.Gender;
+import com.luxus.tinterest.enums.Gender;
 import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import com.luxus.tinterest.exception.handler.RegistrationHandler;
 import com.luxus.tinterest.service.AuthService;

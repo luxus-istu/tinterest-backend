@@ -7,7 +7,7 @@ import com.luxus.tinterest.dto.profile.CompleteProfileRequestDto;
 import com.luxus.tinterest.dto.profile.InterestsUpdateRequestDto;
 import com.luxus.tinterest.dto.profile.ProfileResponseDto;
 import com.luxus.tinterest.dto.profile.WorkInfoUpdateRequestDto;
-import com.luxus.tinterest.entity.Gender;
+import com.luxus.tinterest.enums.Gender;
 import com.luxus.tinterest.exception.GlobalExceptionHandler;
 import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.handler.ProfileHandler;
