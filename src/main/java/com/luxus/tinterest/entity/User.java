@@ -1,5 +1,7 @@
 package com.luxus.tinterest.entity;
 
+import com.luxus.tinterest.enums.Gender;
+import com.luxus.tinterest.enums.Role;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;

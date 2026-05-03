@@ -27,24 +27,44 @@ services:
     volumes:
       - minio-data:/data
 
-  tinterest-app:
-    build: .
+  redis:
+    image: redis:8
+    container_name: redis
+    restart: always
     ports:
-      - "8443:8443"
-    env_file:
-      - .env
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
+      - "6379:6379"
+    command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
-      - ./secrets/keystore.p12:/app/secrets/keystore.p12:ro
-      - ./secrets/keys/private.pem:/app/secrets/keys/private.pem:ro
-      - ./secrets/keys/public.pem:/app/secrets/keys/public.pem:ro
+      - redis-data:/data
+
+  redis-insight:
+    image: redis/redisinsight
+    container_name: redis-insight
+    restart: always
+    ports:
+      - "5540:5540"
     depends_on:
-      tinterest-db:
-        condition: service_healthy
-      minio:
-        condition: service_started
+      - redis
+
+#  tinterest-app:
+#    build: .
+#    ports:
+#      - "8443:8443"
+#    env_file:
+#      - .env
+#    environment:
+#      SPRING_PROFILES_ACTIVE: docker
+#    volumes:
+#      - ./secrets/keystore.p12:/app/secrets/keystore.p12:ro
+#      - ./secrets/keys/private.pem:/app/secrets/keys/private.pem:ro
+#      - ./secrets/keys/public.pem:/app/secrets/keys/public.pem:ro
+#    depends_on:
+#      tinterest-db:
+#        condition: service_healthy
+#      minio:
+#        condition: service_started
 
 volumes:
   db-data:
   minio-data:
+  redis-data:

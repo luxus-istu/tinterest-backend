@@ -1,6 +1,6 @@
 package com.luxus.tinterest.dto.profile;
 
-import com.luxus.tinterest.entity.Gender;
+import com.luxus.tinterest.enums.Gender;
 
 import java.time.LocalDate;
 import java.util.List;
