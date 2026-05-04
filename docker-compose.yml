@@ -29,13 +29,17 @@ services:
 
   redis:
     image: redis:8
-    container_name: redis
     restart: always
     ports:
       - "6379:6379"
     command: [ "redis-server", "--appendonly", "yes" ]
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   redis-insight:
     image: redis/redisinsight
@@ -46,23 +50,25 @@ services:
     depends_on:
       - redis
 
-#  tinterest-app:
-#    build: .
-#    ports:
-#      - "8443:8443"
-#    env_file:
-#      - .env
-#    environment:
-#      SPRING_PROFILES_ACTIVE: docker
-#    volumes:
-#      - ./secrets/keystore.p12:/app/secrets/keystore.p12:ro
-#      - ./secrets/keys/private.pem:/app/secrets/keys/private.pem:ro
-#      - ./secrets/keys/public.pem:/app/secrets/keys/public.pem:ro
-#    depends_on:
-#      tinterest-db:
-#        condition: service_healthy
-#      minio:
-#        condition: service_started
+  tinterest-app:
+    build: .
+    ports:
+      - "8443:8443"
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    volumes:
+      - ./secrets/keystore.p12:/app/secrets/keystore.p12:ro
+      - ./secrets/keys/private.pem:/app/secrets/keys/private.pem:ro
+      - ./secrets/keys/public.pem:/app/secrets/keys/public.pem:ro
+    depends_on:
+      tinterest-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
 volumes:
   db-data:

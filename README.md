@@ -42,15 +42,7 @@ cd <папка проекта>
 cp .env.example .env
 ```
 
-Открыть `.env` и заполнить значения:
-
-```env
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-MAIL_USERNAME=почта@mail.ru
-MAIL_PASSWORD=пароль_от_почты
-SSL_KEYSTORE_PASSWORD=пароль_от_keystore
-```
+Открыть `.env` и заполнить значения
 
 ### 3. Создать папку `secrets/` и положить в нее ключ .p12 для https и rsa ключи для подписи и проверки jwt
 
