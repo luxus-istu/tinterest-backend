@@ -5,6 +5,10 @@ import com.luxus.tinterest.dto.email.EmailVerifyRequestDto;
 import com.luxus.tinterest.dto.login.LoginRequestDto;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
 import com.luxus.tinterest.entity.User;
+import com.luxus.tinterest.exception.login.InvalidCredentialsException;
+import com.luxus.tinterest.exception.login.InvalidRefreshTokenException;
+import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
+import com.luxus.tinterest.exception.verify.InvalidVerificationCodeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,12 +96,34 @@ class AuthServiceTests {
     }
 
     @Test
+    @DisplayName("Should throw when user is already registered")
+    void testRegisterThrowsWhenUserAlreadyRegistered() {
+        when(userService.register(any(RegistrationRequestDto.class)))
+                .thenThrow(new UserAlreadyRegisteredException());
+
+        assertThrows(UserAlreadyRegisteredException.class,
+                () -> authService.register(registrationRequest));
+        verify(userService).register(registrationRequest);
+    }
+
+    @Test
     @DisplayName("Should verify email code through emailVerificationService")
     void testVerifyEmailCode() {
         doNothing().when(emailVerificationService).verifyCode(anyString(), anyString());
 
         authService.verifyEmailCode(emailVerifyRequest);
 
+        verify(emailVerificationService).verifyCode("user@example.com", "123456");
+    }
+
+    @Test
+    @DisplayName("Should propagate invalid verification code exception")
+    void testVerifyEmailCodeThrowsWhenInvalid() {
+        doThrow(new InvalidVerificationCodeException()).when(emailVerificationService)
+                .verifyCode(anyString(), anyString());
+
+        assertThrows(InvalidVerificationCodeException.class,
+                () -> authService.verifyEmailCode(emailVerifyRequest));
         verify(emailVerificationService).verifyCode("user@example.com", "123456");
     }
 
@@ -109,6 +136,17 @@ class AuthServiceTests {
 
         verify(emailVerificationService).resendCode("user@example.com");
         verify(emailService).sendCode("user@example.com", "resent-code");
+    }
+
+    @Test
+    @DisplayName("Should throw when resendCode fails")
+    void testResendEmailCodeThrowsWhenImpossible() {
+        when(emailVerificationService.resendCode("user@example.com"))
+                .thenThrow(new InvalidVerificationCodeException());
+
+        assertThrows(InvalidVerificationCodeException.class,
+                () -> authService.resendEmailCode(emailResendRequest));
+        verify(emailVerificationService).resendCode("user@example.com");
     }
 
     @Test
@@ -125,6 +163,17 @@ class AuthServiceTests {
         verify(userService).login("user@example.com", "password123");
         verify(jwtService).generateAccessToken(user);
         verify(refreshTokenService).generateAndSave(user);
+    }
+
+    @Test
+    @DisplayName("Should throw invalid credentials on login failure")
+    void testLoginThrowsInvalidCredentials() {
+        when(userService.login("user@example.com", "password123"))
+                .thenThrow(new InvalidCredentialsException());
+
+        assertThrows(InvalidCredentialsException.class,
+                () -> authService.login(loginRequest));
+        verify(userService).login("user@example.com", "password123");
     }
 
     @Test
@@ -145,6 +194,17 @@ class AuthServiceTests {
     }
 
     @Test
+    @DisplayName("Should throw invalid refresh token on refresh failure")
+    void testRefreshThrowsInvalidRefreshToken() {
+        when(refreshTokenService.rotate("old.refresh.token"))
+                .thenThrow(new InvalidRefreshTokenException());
+
+        assertThrows(InvalidRefreshTokenException.class,
+                () -> authService.refresh("old.refresh.token"));
+        verify(refreshTokenService).rotate("old.refresh.token");
+    }
+
+    @Test
     @DisplayName("Should revoke refresh token on logout")
     void testLogoutRevokesRefreshToken() {
         doNothing().when(refreshTokenService).revoke("refresh-token-to-revoke");
@@ -152,5 +212,16 @@ class AuthServiceTests {
         authService.logout("refresh-token-to-revoke");
 
         verify(refreshTokenService).revoke("refresh-token-to-revoke");
+    }
+
+    @Test
+    @DisplayName("Should throw invalid refresh token on logout failure")
+    void testLogoutThrowsInvalidRefreshToken() {
+        doThrow(new InvalidRefreshTokenException()).when(refreshTokenService)
+                .revoke("invalid.refresh-token");
+
+        assertThrows(InvalidRefreshTokenException.class,
+                () -> authService.logout("invalid.refresh-token"));
+        verify(refreshTokenService).revoke("invalid.refresh-token");
     }
 }
