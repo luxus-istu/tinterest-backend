@@ -5,8 +5,8 @@ import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
 import com.luxus.tinterest.enums.Gender;
 import com.luxus.tinterest.enums.Role;
 import com.luxus.tinterest.entity.User;
-import com.luxus.tinterest.repository.EmailVerificationRepository;
 import com.luxus.tinterest.repository.UserRepository;
+import com.luxus.tinterest.repository.EmailVerificationRepository;
 
 import jakarta.persistence.EntityManagerFactory;
 
@@ -18,8 +18,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 
@@ -35,9 +40,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest
+@Testcontainers
 @AutoConfigureMockMvc
 @DisplayName("Registration Integration Tests")
 class RegistrationIntegrationTests {
+
+    @Container
+    static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:15-alpine")
+            .withDatabaseName("tinterest_test")
+            .withUsername("test")
+            .withPassword("test");
+
+    @DynamicPropertySource
+    static void registerPgProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
+        registry.add("spring.datasource.username", postgresContainer::getUsername);
+        registry.add("spring.datasource.password", postgresContainer::getPassword);
+        registry.add("spring.datasource.driver-class-name", postgresContainer::getDriverClassName);
+        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
+    }
 
     @Autowired
     private MockMvc mockMvc;

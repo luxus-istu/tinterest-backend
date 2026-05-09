@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // Скорее всего не выполнятся из-за:
-// Коды ошибок не совпадают с теми, что выбрасывает, хз как надо, исправьте как вам надо
+// Коды ошибок не совпадают с теми, что выбрасывают тесты, хз как надо, исправьте как вам надо
 // - QA
 
 @ExtendWith(MockitoExtension.class)
