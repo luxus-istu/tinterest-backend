@@ -12,5 +12,6 @@ public record GroupChatCreateRequestDto(
         String title,
 
         @NotEmpty(message = "Member ids are required")
+        @Size(min = 2, message = "Group chat must include at least two other members")
         Set<Long> memberIds
 ) {}
