@@ -33,9 +33,26 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegistrationResponseDto'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Ошибка валидации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                code: VALIDATION_ERROR
+                message: Validation failed
+                fieldErrors:
+                  email: "must be a well-formed email address"
+                  password: "size must be between 8 and 2147483647"
         '409':
-          $ref: '#/components/responses/Conflict'
+          description: Пользователь уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: EMAIL_ALREADY_EXISTS
+                message: User with this email already registered
 
   /v1/auth/login:
     post:
@@ -61,10 +78,34 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Неверные учетные данные
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_credentials:
+                  value:
+                    code: INVALID_CREDENTIALS
+                    message: Invalid email or password
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Доступ ограничен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                user_blocked:
+                  value:
+                    code: USER_BLOCKED
+                    message: User account is blocked
+                email_not_verified:
+                  value:
+                    code: EMAIL_NOT_VERIFIED
+                    message: Email is not verified
 
   /v1/auth/refresh:
     post:
@@ -75,14 +116,45 @@ paths:
       responses:
         '200':
           description: Токен обновлен
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: refresh_token=new_abc...; HttpOnly; Secure; Path=/v1/auth; Max-Age=1296000; SameSite=Lax
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/RefreshResponseDto'
         '401':
-          $ref: '#/components/responses/Unauthorized'
+          description: Токен невалиден или просрочен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_token:
+                  value:
+                    code: INVALID_REFRESH_TOKEN
+                    message: Invalid refresh token
+                expired_token:
+                  value:
+                    code: REFRESH_TOKEN_EXPIRED
+                    message: Refresh token expired
         '403':
-          $ref: '#/components/responses/Forbidden'
+          description: Попытка повторного использования токена или токен отозван
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                reuse_detected:
+                  value:
+                    code: REFRESH_TOKEN_REUSE_DETECTED
+                    message: Refresh token reuse detected
+                token_revoked:
+                  value:
+                    code: REFRESH_TOKEN_REVOKED
+                    message: Refresh token has been revoked
 
   /v1/auth/logout:
     post:
@@ -92,8 +164,6 @@ paths:
       responses:
         '204':
           description: Выход выполнен успешно
-        '401':
-          $ref: '#/components/responses/Unauthorized'
 
   /v1/auth/email/verify:
     post:
@@ -115,7 +185,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/EmailVerifyResponseDto'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Ошибка валидации или неверный код
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    message: Validation failed
+                    fieldErrors: { code: "must not be blank" }
+                invalid_code:
+                  value:
+                    code: INVALID_CODE
+                    message: Verification code is incorrect
+                code_expired:
+                  value:
+                    code: CODE_EXPIRED
+                    message: Verification code has expired
+                already_confirmed:
+                  value:
+                    code: EMAIL_ALREADY_CONFIRMED
+                    message: Email already verified
 
   /v1/auth/email/resend:
     post:
@@ -138,6 +230,15 @@ paths:
                 $ref: '#/components/schemas/EmailResendResponseDto'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Слишком много попыток
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: MANY_ATTEMPTS
+                message: Too many resend attempts. Please try again later.
 
   # Profiles
   /v1/profiles/me:
@@ -197,7 +298,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileResponseDto'
         '400':
-          $ref: '#/components/responses/BadRequest'
+          description: Ошибка валидации или интересов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    message: Validation failed
+                    fieldErrors: { city: "must not be blank" }
+                invalid_interests:
+                  value:
+                    code: INVALID_INTERESTS
+                    message: Some interests are invalid or not found
 
   /v1/profiles/me/basic:
     put:
@@ -217,6 +332,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /v1/profiles/me/work:
     put:
@@ -236,6 +353,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /v1/profiles/me/communication:
     put:
@@ -255,6 +374,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /v1/profiles/me/interests:
     put:
@@ -274,6 +395,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProfileResponseDto'
+        '400':
+          description: Ошибка интересов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              example:
+                code: INVALID_INTERESTS
+                message: Some interests are invalid or not found
 
   /v1/profiles/me/avatar:
     post:
@@ -297,9 +427,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProfileResponseDto'
         '400':
-          $ref: '#/components/responses/BadRequest'
-        '413':
-          description: Файл слишком большой
+          description: Ошибка загрузки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_AVATAR_FILE
+                message: Invalid file format or size
+        '500':
+          description: Ошибка хранилища
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: STORAGE_ERROR
+                message: Failed to upload file to storage
 
 
   # Discovery & Recommendations
@@ -429,7 +573,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatSummaryResponseDto'
         '404':
-          $ref: '#/components/responses/NotFound'
+          description: Чат не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: CHAT_NOT_FOUND
+                message: Chat with id 123 not found
+        '403':
+          description: Доступ к чату запрещен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: CHAT_ACCESS_DENIED
+                message: You are not a member of this chat
 
   /v1/chats/direct:
     post:
@@ -449,6 +609,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatSummaryResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /v1/chats/groups:
     post:
@@ -468,6 +630,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatSummaryResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
 
   /v1/chats/{chatId}/messages:
@@ -499,6 +663,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatMessagesPageResponseDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
     post:
       tags:
         - Чат
@@ -523,6 +691,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ChatMessageResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /v1/chats/{chatId}/read:
     post:
@@ -569,6 +739,12 @@ paths:
       security:
         - bearerAuth: []
       parameters:
+        - name: email
+          in: query
+          description: Фильтр по началу email пользователя
+          required: false
+          schema:
+            type: string
         - name: page
           in: query
           schema:
@@ -616,11 +792,14 @@ paths:
         '204':
           description: Пользователь заблокирован
         '400':
-          description: Некорректная операция (например, попытка заблокировать админа)
+          description: Некорректная операция
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_ADMIN_OPERATION
+                message: Cannot block user with ADMIN role
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -652,6 +831,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_ADMIN_OPERATION
+                message: Cannot unblock user with ADMIN role
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -728,29 +910,42 @@ components:
 
   responses:
     BadRequest:
-      description: Некорректный запрос
+      description: Некорректный запрос (ошибки валидации)
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/ErrorResponse'
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          example:
+            code: VALIDATION_ERROR
+            message: Validation failed
+            fieldErrors: { "field": "error message" }
     Unauthorized:
       description: Не авторизован
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: UNAUTHORIZED
+            message: Full authentication is required to access this resource
     Forbidden:
       description: Доступ запрещен
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: FORBIDDEN
+            message: Access is denied
     NotFound:
       description: Ресурс не найден
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: USER_NOT_FOUND
+            message: User not found
     Conflict:
       description: Конфликт (например, пользователь уже существует)
       content:
@@ -1039,14 +1234,50 @@ components:
         empty: { type: boolean }
 
     # Errors
+    ErrorCode:
+      type: string
+      enum:
+        - VALIDATION_ERROR
+        - USER_NOT_FOUND
+        - EMAIL_ALREADY_EXISTS
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - INVALID_CODE
+        - MANY_ATTEMPTS
+        - CODE_EXPIRED
+        - EMAIL_ALREADY_CONFIRMED
+        - INVALID_CREDENTIALS
+        - USER_BLOCKED
+        - EMAIL_NOT_VERIFIED
+        - INVALID_INTERESTS
+        - INVALID_REFRESH_TOKEN
+        - REFRESH_TOKEN_REUSE_DETECTED
+        - REFRESH_TOKEN_EXPIRED
+        - REFRESH_TOKEN_REVOKED
+        - CHAT_NOT_FOUND
+        - CHAT_ACCESS_DENIED
+        - INVALID_CHAT_OPERATION
+        - INVALID_ADMIN_OPERATION
+        - INVALID_AVATAR_FILE
+        - STORAGE_ERROR
+
     ErrorResponse:
       type: object
+      required: [code, message]
       properties:
-        code: { type: string }
-        message: { type: string }
-        fieldErrors:
-          type: object
-          additionalProperties: { type: string }
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        message: { type: string, description: "Сообщение об ошибке" }
+
+    ValidationErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+        - type: object
+          required: [fieldErrors]
+          properties:
+            fieldErrors:
+              type: object
+              description: "Карта ошибок валидации (поле -> описание)"
+              additionalProperties: { type: string }
 
     # Enums
     Gender:
