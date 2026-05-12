@@ -2,6 +2,9 @@ package com.luxus.tinterest.repository;
 
 
 import com.luxus.tinterest.entity.User;
+import com.luxus.tinterest.enums.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,4 +25,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.interests WHERE u.id IN :ids")
     List<User> findAllByIdWithInterests(@Param("ids") List<Long> ids);
+
+    Page<User> findAllByRole(Role role, Pageable pageable);
+
+    Page<User> findAllByRoleAndEmailStartingWithIgnoreCase(Role role, String email, Pageable pageable);
 }

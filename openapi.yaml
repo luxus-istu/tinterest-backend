@@ -1,0 +1,1066 @@
+openapi: 3.0.0
+info:
+  title: Tinterest API
+  description: API бэкенда для Tinterest - приложения для нетворкинга на основе интересов.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+    description: Локальный сервер разработки
+
+security:
+  - bearerAuth: []
+
+paths:
+  # Auth & Registration
+  /v1/auth/register:
+    post:
+      tags:
+        - Аутентификация
+      summary: Регистрация нового пользователя
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequestDto'
+      responses:
+        '200':
+          description: Регистрация успешна
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/auth/login:
+    post:
+      tags:
+        - Аутентификация
+      summary: Аутентификация пользователя и получение токена доступа
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequestDto'
+      responses:
+        '200':
+          description: Вход выполнен успешно
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+                example: refresh_token=abc...; HttpOnly; Secure; Path=/v1/auth; Max-Age=1296000; SameSite=Lax
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponseDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/auth/refresh:
+    post:
+      tags:
+        - Аутентификация
+      summary: Обновление токена доступа с помощью refresh token cookie
+      security: []
+      responses:
+        '200':
+          description: Токен обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponseDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/auth/logout:
+    post:
+      tags:
+        - Аутентификация
+      summary: Выход пользователя и инвалидация refresh токена
+      responses:
+        '204':
+          description: Выход выполнен успешно
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/auth/email/verify:
+    post:
+      tags:
+        - Аутентификация
+      summary: Подтверждение email кодом
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailVerifyRequestDto'
+      responses:
+        '200':
+          description: Email подтвержден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailVerifyResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/auth/email/resend:
+    post:
+      tags:
+        - Аутентификация
+      summary: Повторная отправка кода подтверждения
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailResendRequestDto'
+      responses:
+        '200':
+          description: Код отправлен повторно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailResendResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Profiles
+  /v1/profiles/me:
+    get:
+      tags:
+        - Профиль
+      summary: Получение профиля текущего пользователя
+      responses:
+        '200':
+          description: Данные профиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+
+  /v1/profiles/{userId}:
+    get:
+      tags:
+        - Профиль
+      summary: Получение профиля по ID пользователя
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Данные профиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/profiles/me/complete:
+    put:
+      tags:
+        - Профиль
+      summary: Завершение настройки профиля
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteProfileRequestDto'
+      responses:
+        '200':
+          description: Настройка профиля завершена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/profiles/me/basic:
+    put:
+      tags:
+        - Профиль
+      summary: Обновление основной информации профиля
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BasicProfileUpdateRequestDto'
+      responses:
+        '200':
+          description: Основная информация обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+
+  /v1/profiles/me/work:
+    put:
+      tags:
+        - Профиль
+      summary: Обновление информации о работе
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkInfoUpdateRequestDto'
+      responses:
+        '200':
+          description: Информация о работе обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+
+  /v1/profiles/me/communication:
+    put:
+      tags:
+        - Профиль
+      summary: Обновление предпочтений в общении
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommunicationPreferencesUpdateRequestDto'
+      responses:
+        '200':
+          description: Предпочтения обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+
+  /v1/profiles/me/interests:
+    put:
+      tags:
+        - Профиль
+      summary: Обновление интересов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterestsUpdateRequestDto'
+      responses:
+        '200':
+          description: Интересы обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+
+  /v1/profiles/me/avatar:
+    post:
+      tags:
+        - Профиль
+      summary: Загрузка аватара профиля
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Аватар загружен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileResponseDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          description: Файл слишком большой
+
+
+  # Discovery & Recommendations
+  /v1/discovery/recommendation:
+    get:
+      tags:
+        - Рекомендации
+      summary: Получение рекомендаций пользователей
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Список рекомендованных пользователей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationResponse'
+
+  /v1/discovery/recommendation/filter:
+    get:
+      tags:
+        - Рекомендации
+      summary: Получение рекомендаций с фильтрами
+      parameters:
+        - name: city
+          in: query
+          schema:
+            type: string
+        - name: goal
+          in: query
+          schema:
+            type: string
+        - name: department
+          in: query
+          schema:
+            type: string
+        - name: gender
+          in: query
+          schema:
+            type: string
+        - name: personalityType
+          in: query
+          schema:
+            type: string
+        - name: interestIds
+          in: query
+          explode: true
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Отфильтрованные рекомендации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilteredRecommendationResponse'
+
+  /v1/discovery/swipe:
+    post:
+      tags:
+        - Рекомендации
+      summary: Свайп пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SwipeRequest'
+      responses:
+        '200':
+          description: Свайп записан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SwipeResponse'
+
+  # Chats
+  /v1/chats:
+    get:
+      tags:
+        - Чат
+      summary: Получение чатов пользователя
+      responses:
+        '200':
+          description: Список чатов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatSummaryResponseDto'
+
+  /v1/chats/{chatId}:
+    get:
+      tags:
+        - Чат
+      summary: Получение деталей чата
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Детали чата
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSummaryResponseDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/chats/direct:
+    post:
+      tags:
+        - Чат
+      summary: Создание или получение прямого чата с пользователем
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DirectChatRequestDto'
+      responses:
+        '200':
+          description: Прямой чат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSummaryResponseDto'
+
+  /v1/chats/groups:
+    post:
+      tags:
+        - Чат
+      summary: Создание группового чата
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupChatCreateRequestDto'
+      responses:
+        '200':
+          description: Групповой чат создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSummaryResponseDto'
+
+
+  /v1/chats/{chatId}/messages:
+    get:
+      tags:
+        - Чат
+      summary: Получение сообщений чата (с пагинацией)
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Страница сообщений
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessagesPageResponseDto'
+    post:
+      tags:
+        - Чат
+      summary: Отправка сообщения в чат (REST альтернатива)
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageSendRequestDto'
+      responses:
+        '200':
+          description: Сообщение отправлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResponseDto'
+
+  /v1/chats/{chatId}/read:
+    post:
+      tags:
+        - Чат
+      summary: Пометить чат как прочитанный
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Чат обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSummaryResponseDto'
+
+  # Interests
+  /v1/interests:
+    get:
+      tags:
+        - Интересы
+      summary: Получение всех доступных интересов
+      responses:
+        '200':
+          description: Список интересов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InterestResponseDto'
+
+  # Admin
+  /v1/admin/users:
+    get:
+      tags:
+        - Администрирование
+      summary: Получение списка пользователей с ролью USER (для админа)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: sort
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Список пользователей
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummaryPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/users/{userId}/block:
+    post:
+      tags:
+        - Администрирование
+      summary: Блокировка пользователя
+      description: Блокировка пользователя. Нельзя заблокировать пользователя с ролью ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Пользователь заблокирован
+        '400':
+          description: Некорректная операция (например, попытка заблокировать админа)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/admin/users/{userId}/unblock:
+    post:
+      tags:
+        - Администрирование
+      summary: Разблокировка пользователя
+      description: Разблокировка пользователя. Нельзя разблокировать пользователя с ролью ADMIN.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Пользователь разблокирован
+        '400':
+          description: Некорректная операция
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # WebSocket Documentation (Informational Paths)
+  /ws:
+    get:
+      tags:
+        - WebSocket
+      summary: Точка подключения WebSocket
+      description: |
+        Эндпоинт STOMP.
+        Подключение с использованием SockJS или обычных WebSockets.
+        Аутентификация: Передайте `Bearer <token>` в заголовке `Authorization` при подключении.
+      responses:
+        '101':
+          description: Переключение протоколов
+
+  /app/chats/{chatId}/messages:
+    post:
+      tags:
+        - WebSocket
+      summary: "[STOMP] Отправка сообщения"
+      description: |
+        Назначение для отправки сообщений через WebSocket.
+        Требуется STOMP-фрейм `SEND`.
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageSendRequestDto'
+      responses:
+        '200':
+          description: Сообщение обработано и разослано подписчикам
+
+  /topic/chats/{chatId}:
+    get:
+      tags:
+        - WebSocket
+      summary: "[STOMP] Подписка на чат"
+      description: |
+        Назначение для получения сообщений и обновлений в конкретном чате.
+        Требуется STOMP-фрейм `SUBSCRIBE`.
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Трансляция сообщения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResponseDto'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Доступ запрещен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Конфликт (например, пользователь уже существует)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    # Auth
+    RegistrationRequestDto:
+      type: object
+      required: [firstName, lastName, email, password]
+      properties:
+        firstName: { type: string, maxLength: 100, description: "Имя" }
+        lastName: { type: string, maxLength: 100, description: "Фамилия" }
+        middleName: { type: string, maxLength: 100, description: "Отчество" }
+        email: { type: string, format: email, description: "Электронная почта" }
+        password: { type: string, minLength: 8, description: "Пароль" }
+        dateOfBirth: { type: string, format: date, description: "Дата рождения" }
+        gender: { $ref: '#/components/schemas/Gender' }
+        language: { type: string, pattern: '^(ru|en)$', description: "Язык интерфейса" }
+
+    RegistrationResponseDto:
+      type: object
+      properties:
+        email: { type: string }
+        message: { type: string }
+
+    LoginRequestDto:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    LoginResponseDto:
+      type: object
+      properties:
+        accessToken: { type: string }
+
+    RefreshResponseDto:
+      type: object
+      properties:
+        accessToken: { type: string }
+
+    EmailVerifyRequestDto:
+      type: object
+      required: [email, code]
+      properties:
+        email: { type: string, format: email }
+        code: { type: string }
+
+    EmailVerifyResponseDto:
+      type: object
+      properties:
+        message: { type: string }
+
+    EmailResendRequestDto:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+
+    EmailResendResponseDto:
+      type: object
+      properties:
+        message: { type: string }
+
+    # Profile
+    ProfileResponseDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        firstName: { type: string }
+        lastName: { type: string }
+        middleName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        gender: { $ref: '#/components/schemas/Gender' }
+        language: { type: string }
+        city: { type: string }
+        about: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        goal: { type: string }
+        personalityType: { type: string }
+        timeSlots: { type: array, items: { type: string } }
+        avatarUrl: { type: string }
+        interests: { type: array, items: { type: string } }
+        hasFilledProfile: { type: boolean }
+
+    CompleteProfileRequestDto:
+      type: object
+      required: [city, jobTitle, department, goal, personalityType, timeSlots, interests]
+      properties:
+        city: { type: string, maxLength: 100 }
+        about: { type: string, maxLength: 1000 }
+        jobTitle: { type: string, maxLength: 120 }
+        department: { type: string, maxLength: 120 }
+        goal: { type: string, maxLength: 120 }
+        personalityType: { type: string, maxLength: 120 }
+        timeSlots: { type: array, items: { type: string }, maxItems: 10 }
+        interests: { type: array, items: { type: string }, maxItems: 20 }
+
+
+    BasicProfileUpdateRequestDto:
+      type: object
+      required: [firstName, lastName, dateOfBirth, gender, language, city]
+      properties:
+        firstName: { type: string, maxLength: 100 }
+        lastName: { type: string, maxLength: 100 }
+        middleName: { type: string, maxLength: 100 }
+        dateOfBirth: { type: string, format: date }
+        gender: { $ref: '#/components/schemas/Gender' }
+        language: { type: string, pattern: '^(ru|en)$' }
+        city: { type: string, maxLength: 100 }
+        about: { type: string, maxLength: 1000 }
+
+    WorkInfoUpdateRequestDto:
+      type: object
+      required: [jobTitle, department]
+      properties:
+        jobTitle: { type: string, maxLength: 120 }
+        department: { type: string, maxLength: 120 }
+
+    CommunicationPreferencesUpdateRequestDto:
+      type: object
+      required: [goal, personalityType, timeSlots]
+      properties:
+        goal: { type: string, maxLength: 120 }
+        personalityType: { type: string, maxLength: 120 }
+        timeSlots: { type: array, items: { type: string }, maxItems: 10 }
+
+    InterestsUpdateRequestDto:
+      type: object
+      required: [interests]
+      properties:
+        interests: { type: array, items: { type: string }, maxItems: 20 }
+
+    # Discovery
+    RecommendationResponse:
+      type: object
+      properties:
+        users: { type: array, items: { $ref: '#/components/schemas/UserCardDto' } }
+        hasMore: { type: boolean }
+        cycle: { type: integer }
+
+    FilteredRecommendationResponse:
+      type: object
+      properties:
+        users: { type: array, items: { $ref: '#/components/schemas/UserCardDto' } }
+        hasMore: { type: boolean }
+        empty: { type: boolean }
+
+    UserCardDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        firstName: { type: string }
+        lastName: { type: string }
+        middleName: { type: string }
+        dateOfBirth: { type: string, format: date }
+        gender: { $ref: '#/components/schemas/Gender' }
+        city: { type: string }
+        about: { type: string }
+        jobTitle: { type: string }
+        department: { type: string }
+        goal: { type: string }
+        personalityType: { type: string }
+        timeSlots: { type: array, items: { type: string } }
+        avatarUrl: { type: string }
+        interests: { type: array, items: { $ref: '#/components/schemas/InterestDto' } }
+
+    InterestDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+
+    SwipeRequest:
+      type: object
+      required: [toUserId, reaction]
+      properties:
+        toUserId: { type: integer, format: int64 }
+        reaction: { $ref: '#/components/schemas/Reaction' }
+
+    SwipeResponse:
+      type: object
+      properties:
+        result: { type: string }
+        matchId: { type: integer, format: int64 }
+        chatId: { type: integer, format: int64 }
+
+    # Chat
+    ChatSummaryResponseDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        type: { $ref: '#/components/schemas/ChatType' }
+        title: { type: string }
+        createdBy: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+        members: { type: array, items: { $ref: '#/components/schemas/ChatMemberResponseDto' } }
+        lastMessage: { $ref: '#/components/schemas/ChatMessageResponseDto' }
+        unreadCount: { type: integer, format: int64 }
+
+    ChatMemberResponseDto:
+      type: object
+      properties:
+        userId: { type: integer, format: int64 }
+        firstName: { type: string }
+        lastName: { type: string }
+        avatarUrl: { type: string }
+        role: { $ref: '#/components/schemas/ChatMemberRole' }
+        joinedAt: { type: string, format: date-time }
+        lastReadAt: { type: string, format: date-time }
+
+
+    ChatMessageResponseDto:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        chatId: { type: integer, format: int64 }
+        senderId: { type: integer, format: int64 }
+        type: { $ref: '#/components/schemas/MessageType' }
+        content: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ChatMessagesPageResponseDto:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/ChatMessageResponseDto' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+
+    DirectChatRequestDto:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: integer, format: int64 }
+
+    GroupChatCreateRequestDto:
+      type: object
+      required: [title, memberIds]
+      properties:
+        title: { type: string, maxLength: 120 }
+        memberIds: { type: array, items: { type: integer, format: int64 }, minItems: 1 }
+
+    MessageSendRequestDto:
+      type: object
+      required: [content]
+      properties:
+        type: { $ref: '#/components/schemas/MessageType' }
+        content: { type: string, maxLength: 4000 }
+
+    InterestResponseDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+
+    # Admin schemas
+    UserSummaryResponseDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        firstName: { type: string }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        blocked: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    UserSummaryPageResponse:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/UserSummaryResponseDto' } }
+        pageable: { type: object }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        last: { type: boolean }
+        size: { type: integer }
+        number: { type: integer }
+        numberOfElements: { type: integer }
+        first: { type: boolean }
+        empty: { type: boolean }
+
+    # Errors
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        fieldErrors:
+          type: object
+          additionalProperties: { type: string }
+
+    # Enums
+    Gender:
+      type: string
+      enum: [MALE, FEMALE]
+    Reaction:
+      type: string
+      enum: [LIKE, DISLIKE]
+    ChatType:
+      type: string
+      enum: [DIRECT, GROUP]
+    ChatMemberRole:
+      type: string
+      enum: [OWNER, MEMBER]
+    MessageType:
+      type: string
+      enum: [TEXT]

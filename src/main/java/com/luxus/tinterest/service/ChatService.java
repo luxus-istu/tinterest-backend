@@ -38,6 +38,7 @@ import java.util.Set;
 public class ChatService {
 
     private static final int MAX_MESSAGE_PAGE_SIZE = 100;
+    private static final int MIN_GROUP_INVITED_MEMBERS = 2;
     private static final LocalDateTime UNREAD_COUNTER_START = LocalDateTime.of(1970, 1, 1, 0, 0);
 
     private final ChatRepository chatRepository;
@@ -95,10 +96,13 @@ public class ChatService {
 
     @Transactional
     public ChatSummaryResponseDto createGroupChat(Long currentUserId, GroupChatCreateRequestDto request) {
-        User currentUser = userRepository.findById(currentUserId).orElseThrow(UserNotFoundException::new);
         Set<Long> memberIds = new LinkedHashSet<>(request.memberIds());
         memberIds.remove(currentUserId);
+        if (memberIds.size() < MIN_GROUP_INVITED_MEMBERS) {
+            throw new InvalidChatOperationException("Group chat must include at least two other members");
+        }
 
+        User currentUser = userRepository.findById(currentUserId).orElseThrow(UserNotFoundException::new);
         List<User> invitedUsers = userRepository.findAllById(memberIds);
         if (invitedUsers.size() != memberIds.size()) {
             throw new InvalidChatOperationException("One or more chat members were not found");
