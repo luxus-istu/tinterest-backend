@@ -1,5 +1,6 @@
 package com.luxus.tinterest.mapper;
 
+import com.luxus.tinterest.dto.admin.UserSummaryResponseDto;
 import com.luxus.tinterest.dto.registration.RegistrationRequestDto;
 import com.luxus.tinterest.entity.User;
 import org.mapstruct.Mapper;
@@ -10,5 +11,7 @@ public interface UserMapper {
 
     @Mapping(target = "passwordHash", ignore = true)
     User toUser(RegistrationRequestDto dto);
+
+    UserSummaryResponseDto toUserSummaryResponseDto(User user);
 
 }
