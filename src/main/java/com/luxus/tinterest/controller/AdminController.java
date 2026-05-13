@@ -1,6 +1,8 @@
 package com.luxus.tinterest.controller;
 
+import com.luxus.tinterest.dto.admin.AdminStatisticsResponseDto;
 import com.luxus.tinterest.dto.admin.UserSummaryResponseDto;
+import com.luxus.tinterest.service.AdminStatisticsService;
 import com.luxus.tinterest.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final UserService userService;
+    private final AdminStatisticsService statisticsService;
+
+    @GetMapping("/statistics")
+    public ResponseEntity<AdminStatisticsResponseDto> getStatistics() {
+        return ResponseEntity.ok(statisticsService.getStatistics());
+    }
 
     @GetMapping("/users")
     public ResponseEntity<Page<UserSummaryResponseDto>> getAllUsers(

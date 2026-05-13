@@ -841,6 +841,25 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/admin/statistics:
+    get:
+      tags:
+        - Администрирование
+      summary: Получение аналитики и статистики платформы (для админа)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Данные статистики
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminStatisticsResponseDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   # WebSocket Documentation (Informational Paths)
   /ws:
     get:
@@ -1232,6 +1251,32 @@ components:
         numberOfElements: { type: integer }
         first: { type: boolean }
         empty: { type: boolean }
+
+    AdminStatisticsResponseDto:
+      type: object
+      properties:
+        totalUsers: { type: integer, format: int64 }
+        totalMatches: { type: integer, format: int64 }
+        registrationDynamics: { $ref: '#/components/schemas/UserRegistrationDynamicsDto' }
+        genderDistribution:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+          example: { "MALE": 150, "FEMALE": 120 }
+        topCities:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+          example: { "Москва": 50, "Санкт-Петербург": 30 }
+        topInterests:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+          example: { "Программирование": 80, "Йога": 45 }
+
+    UserRegistrationDynamicsDto:
+      type: object
+      properties:
+        lastDay: { type: integer, format: int64 }
+        lastWeek: { type: integer, format: int64 }
+        lastMonth: { type: integer, format: int64 }
 
     # Errors
     ErrorCode:

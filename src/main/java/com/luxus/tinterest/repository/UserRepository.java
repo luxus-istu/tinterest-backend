@@ -29,4 +29,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findAllByRole(Role role, Pageable pageable);
 
     Page<User> findAllByRoleAndEmailStartingWithIgnoreCase(Role role, String email, Pageable pageable);
+
+    @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :since")
+    long countByCreatedAtAfter(@Param("since") java.time.Instant since);
+
+    @Query("SELECT u.gender, COUNT(u) FROM User u GROUP BY u.gender")
+    List<Object[]> countUsersByGender();
+
+    @Query(value = "SELECT city, COUNT(*) as count FROM users WHERE city IS NOT NULL GROUP BY city ORDER BY count DESC LIMIT :limit", nativeQuery = true)
+    List<Object[]> findTopCities(@Param("limit") int limit);
+
+    @Query(value = "SELECT i.name, COUNT(ui.user_id) as count FROM interests i " +
+            "JOIN user_interests ui ON i.id = ui.interest_id " +
+            "GROUP BY i.name ORDER BY count DESC LIMIT :limit", nativeQuery = true)
+    List<Object[]> findTopInterests(@Param("limit") int limit);
 }
