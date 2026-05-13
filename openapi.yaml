@@ -1233,6 +1233,32 @@ components:
         first: { type: boolean }
         empty: { type: boolean }
 
+    AdminStatisticsResponseDto:
+      type: object
+      properties:
+        totalUsers: { type: integer, format: int64 }
+        totalMatches: { type: integer, format: int64 }
+        registrationDynamics: { $ref: '#/components/schemas/UserRegistrationDynamicsDto' }
+        genderDistribution:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+          example: { "MALE": 150, "FEMALE": 120 }
+        topCities:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+          example: { "Москва": 50, "Санкт-Петербург": 30 }
+        topInterests:
+          type: object
+          additionalProperties: { type: integer, format: int64 }
+          example: { "Программирование": 80, "Йога": 45 }
+
+    UserRegistrationDynamicsDto:
+      type: object
+      properties:
+        lastDay: { type: integer, format: int64 }
+        lastWeek: { type: integer, format: int64 }
+        lastMonth: { type: integer, format: int64 }
+
     # Errors
     ErrorCode:
       type: string
