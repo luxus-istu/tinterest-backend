@@ -42,6 +42,12 @@ class AdminStatisticsServiceTest {
         testInstant = Instant.now();
     }
 
+    @Test
+    @DisplayName("Sanity check - service should be injectable")
+    void sanityCheck() {
+        assertThat(adminStatisticsService).isNotNull();
+    }
+
     @Nested
     @DisplayName("Positive Test Cases")
     class PositiveTests {

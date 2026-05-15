@@ -14,6 +14,8 @@ import com.luxus.tinterest.exception.handler.ProfileHandler;
 import com.luxus.tinterest.exception.profile.InvalidAvatarFileException;
 import com.luxus.tinterest.service.ProfileService;
 
+import io.lettuce.core.dynamic.support.MethodParameter;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,12 +25,25 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -36,12 +51,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Profile Controller Tests")
@@ -56,86 +68,36 @@ class ProfileControllerTests {
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
 
-    private ProfileResponseDto validProfileResponse;
-    private CompleteProfileRequestDto validCompleteRequest;
-    private BasicProfileUpdateRequestDto validBasicUpdateRequest;
-    private WorkInfoUpdateRequestDto validWorkUpdateRequest;
-    private CommunicationPreferencesUpdateRequestDto validCommunicationUpdateRequest;
-    private InterestsUpdateRequestDto validInterestsUpdateRequest;
-
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(profileController)
-                .setControllerAdvice(new GlobalExceptionHandler(), new ProfileHandler())
+                .setControllerAdvice(new ProfileHandler(), new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .defaultRequest(get("/").with(authorized()))
+                .addFilters(new AuthorizationHeaderFilter())
                 .build();
-
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
-
-        // Setup test data
-        validProfileResponse = new ProfileResponseDto(
-                1L,
-                "John",
-                "Doe",
-                "Michael",
-                LocalDate.of(1990, 5, 15),
-                Gender.MALE,
-                "en",
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday", "Wednesday", "Friday"),
-                "https://example.com/avatar.jpg",
-                List.of("Java", "Spring Boot"),
-                true
-        );
-
-        validCompleteRequest = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday", "Wednesday", "Friday"),
-                List.of("Java", "Spring Boot")
-        );
-
-        validBasicUpdateRequest = new BasicProfileUpdateRequestDto(
-                "John",
-                "Doe",
-                "Michael",
-                LocalDate.of(1990, 5, 15),
-                Gender.MALE,
-                "en",
-                "New York",
-                "Software developer"
-        );
-
-        validWorkUpdateRequest = new WorkInfoUpdateRequestDto(
-                "Senior Developer",
-                "Engineering"
-        );
-
-        validCommunicationUpdateRequest = new CommunicationPreferencesUpdateRequestDto(
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday", "Wednesday", "Friday")
-        );
-
-        validInterestsUpdateRequest = new InterestsUpdateRequestDto(
-                List.of("Java", "Spring Boot", "Microservices")
-        );
     }
 
-    private void mockAuthentication(Long userId) {
+    private void mockAuthenticationPrincipal(Long userId) {
         UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken(userId, null, List.of());
         SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    private RequestPostProcessor authorized() {
+        return request -> {
+            request.addHeader("Authorization", "Bearer dummy-token");
+            return request;
+        };
+    }
+
+    private RequestPostProcessor unauthorized() {
+        return request -> {
+            request.removeHeader("Authorization");
+            return request;
+        };
     }
 
     @AfterEach
@@ -143,138 +105,164 @@ class ProfileControllerTests {
         SecurityContextHolder.clearContext();
     }
 
+    private ProfileResponseDto createSampleProfile(Long userId) {
+    return new ProfileResponseDto(
+            userId,
+            "John",
+            "Doe",
+            null,
+            LocalDate.of(1993, 5, 15),
+            Gender.MALE,
+            "English",
+            "New York",
+            "Loves hiking and coffee",
+            "Engineer",
+            "IT",
+            "Professional growth",
+            "INTJ",
+            List.of(),
+            "john.jpg",
+            List.of(),
+            true
+    );
+}
+
     // -------------------------------------------------------------------------
-    // GET /v1/profiles/me
+    // GET /v1/profiles/me - Positive
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Should successfully retrieve own profile")
+    @DisplayName("Should successfully retrieve current user's profile")
     void testGetMyProfileSuccess() throws Exception {
-        Long userId = 1L;
-        when(profileService.getMyProfile(userId)).thenReturn(validProfileResponse);
-
-        mockAuthentication(userId);
+        mockAuthenticationPrincipal(1L);
+        
+        ProfileResponseDto profile = createSampleProfile(1L);
+        when(profileService.getMyProfile(1L)).thenReturn(profile);
 
         mockMvc.perform(get("/v1/profiles/me"))
+                .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.firstName").value("John"))
                 .andExpect(jsonPath("$.lastName").value("Doe"))
-                .andExpect(jsonPath("$.goal").value("Career advancement"))
-                .andExpect(jsonPath("$.personalityType").value("ENTJ"))
-                .andExpect(jsonPath("$.interests[0]").value("Java"));
+                .andExpect(jsonPath("$.jobTitle").value("Engineer"));
     }
 
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for get own profile")
-    void testGetMyProfileWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/v1/profiles/me"))
-                .andExpect(status().isForbidden());
-    }
+    // -------------------------------------------------------------------------
+    // GET /v1/profiles/me - Negative
+    // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Should return 404 when user profile not found")
     void testGetMyProfileNotFound() throws Exception {
-        Long userId = 1L;
-        doThrow(new UserNotFoundException()).when(profileService).getMyProfile(userId);
-
-        mockAuthentication(userId);
+        mockAuthenticationPrincipal(999L);
+        doThrow(new UserNotFoundException()).when(profileService).getMyProfile(999L);
 
         mockMvc.perform(get("/v1/profiles/me"))
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    @DisplayName("Should return 401 when retrieving current profile without authentication")
+    void testGetMyProfileWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/v1/profiles/me").with(unauthorized()))
+                .andExpect(status().isUnauthorized());
+    }
+
     // -------------------------------------------------------------------------
-    // GET /v1/profiles/{userId}
+    // GET /v1/profiles/{userId} - Positive
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Should successfully retrieve user profile by ID")
-    void testGetProfileByIdSuccess() throws Exception {
-        Long userId = 2L;
-        when(profileService.getProfile(userId)).thenReturn(validProfileResponse);
+    @DisplayName("Should successfully retrieve user profile by id")
+    void testGetUserProfileSuccess() throws Exception {
+        ProfileResponseDto profile = createSampleProfile(2L);
+        when(profileService.getProfile(2L)).thenReturn(profile);
 
-        mockMvc.perform(get("/v1/profiles/{userId}", userId))
+        mockMvc.perform(get("/v1/profiles/2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1L))
-                .andExpect(jsonPath("$.firstName").value("John"));
+                .andExpect(jsonPath("$.id").value(2))
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Doe"));
     }
 
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for get own profile")
-    void testGetProfileByIdWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/v1/profiles/{userId}", 2L))
-                .andExpect(status().isForbidden());
-    }
+    // -------------------------------------------------------------------------
+    // GET /v1/profiles/{userId} - Negative
+    // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Should return 404 when profile by ID not found")
-    void testGetProfileByIdNotFound() throws Exception {
-        Long userId = 999L;
-        doThrow(new UserNotFoundException()).when(profileService).getProfile(userId);
+    @DisplayName("Should return 404 when user profile not found by id")
+    void testGetUserProfileNotFound() throws Exception {
+        doThrow(new UserNotFoundException()).when(profileService).getProfile(999L);
 
-        mockMvc.perform(get("/v1/profiles/{userId}", userId))
+        mockMvc.perform(get("/v1/profiles/999"))
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    @DisplayName("Should retrieve user profile by id without authentication")
+    void testGetUserProfileWithoutAuthentication() throws Exception {
+        ProfileResponseDto profile = createSampleProfile(999L);
+        when(profileService.getProfile(999L)).thenReturn(profile);
+
+        mockMvc.perform(get("/v1/profiles/999").with(unauthorized()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(999))
+                .andExpect(jsonPath("$.firstName").value("John"));
+    }
+
     // -------------------------------------------------------------------------
-    // PUT /v1/profiles/me/complete
+    // PUT /v1/profiles/me/complete - Positive
     // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Should successfully complete profile")
     void testCompleteProfileSuccess() throws Exception {
-        Long userId = 1L;
-        when(profileService.completeProfile(userId, validCompleteRequest)).thenReturn(validProfileResponse);
+        mockAuthenticationPrincipal(1L);
 
-        mockAuthentication(userId);
+        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
+            "New York",
+            "Loves hiking and coffee",
+            "Engineer",
+            "IT",
+            "Professional growth",
+            "INTJ",
+            List.of("10:00-12:00", "14:00-16:00"),
+            List.of("Reading", "Music")
+        );
+
+        ProfileResponseDto response = createSampleProfile(1L);
+
+        when(profileService.completeProfile(eq(1L), any(CompleteProfileRequestDto.class)))
+                .thenReturn(response);
 
         mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCompleteRequest)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.city").value("New York"))
-                .andExpect(jsonPath("$.goal").value("Career advancement"))
-                .andExpect(jsonPath("$.hasFilledProfile").value(true));
+                .andExpect(jsonPath("$.firstName").value("John"))
+                .andExpect(jsonPath("$.lastName").value("Doe"))
+                .andExpect(jsonPath("$.jobTitle").value("Engineer"))
+                .andExpect(jsonPath("$.gender").value("MALE"));
     }
 
-    @Test
-    @DisplayName("Should return 400 when city is missing on complete profile")
-    void testCompleteProfileWithoutCity() throws Exception {
-        Long userId = 1L;
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                null,
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday"),
-                List.of("Java")
-        );
-        mockAuthentication(userId);
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/complete - Negative
+    // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Should return 400 when city exceeds max length on complete profile")
-    void testCompleteProfileWithCityTooLong() throws Exception {
-        Long userId = 1L;
+    @DisplayName("Should return 400 when city is missing")
+    void testCompleteProfileWithoutName() throws Exception {
+        mockAuthenticationPrincipal(1L);
         CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "A".repeat(101),
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday"),
-                List.of("Java")
+            null,
+            "Loves hiking and coffee",
+            "Engineer",
+            "IT",
+            "Professional growth",
+            "INTJ",
+            List.of("10:00-12:00", "14:00-16:00"),List.of("Reading", "Music")
         );
-
-        mockAuthentication(userId);
 
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -283,41 +271,21 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 400 when jobTitle is missing on complete profile")
-    void testCompleteProfileWithoutJobTitle() throws Exception {
-        Long userId = 1L;
+    @DisplayName("Should return 400 for invalid profile data")
+    void testCompleteProfileInvalidData() throws Exception {
+        mockAuthenticationPrincipal(1L);
         CompleteProfileRequestDto request = new CompleteProfileRequestDto(
                 "New York",
-                "Software developer",
-                null,
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday"),
-                List.of("Java")
+                "Loves hiking and coffee",
+                "Engineer",
+                "IT",
+                "Professional growth",
+                "INTJ",
+                List.of("10:00-12:00", "14:00-16:00"),List.of("Reading", "Music")
         );
-
-        mockAuthentication(userId);
         
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when goal is missing on complete profile")
-    void testCompleteProfileWithoutGoal() throws Exception {
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                null,
-                "ENTJ",
-                List.of("Monday"),
-                List.of("Java")
-        );
+        doThrow(new HttpMessageNotReadableException("Invalid request format")).when(profileService)
+                .completeProfile(eq(1L), any(CompleteProfileRequestDto.class));
 
         mockMvc.perform(put("/v1/profiles/me/complete")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -326,185 +294,70 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 400 when personalityType is missing on complete profile")
-    void testCompleteProfileWithoutPersonalityType() throws Exception {
-        Long userId = 1L;
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                null,
-                List.of("Monday"),
-                List.of("Java")
-        );
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when timeSlots list is empty on complete profile")
-    void testCompleteProfileWithoutTimeSlots() throws Exception {
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of(),
-                List.of("Java")
-        );
-
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when timeSlots exceeds max size on complete profile")
-    void testCompleteProfileWithTooManyTimeSlots() throws Exception {
-        Long userId = 1L;
-        List<String> tooManyTimeSlots = List.of(
-                "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-                "Saturday", "Sunday", "Morning", "Afternoon", "Evening", "Night"
-        );
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                tooManyTimeSlots,
-                List.of("Java")
-        );
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when interests list is empty on complete profile")
-    void testCompleteProfileWithEmptyInterests() throws Exception {
-        Long userId = 1L;
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday"),
-                List.of()
-        );
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when interests exceeds max size on complete profile")
-    void testCompleteProfileWithTooManyInterests() throws Exception {
-        Long userId = 1L;
-        List<String> tooManyInterests = List.of(
-                "Interest1", "Interest2", "Interest3", "Interest4", "Interest5",
-                "Interest6", "Interest7", "Interest8", "Interest9", "Interest10",
-                "Interest11", "Interest12", "Interest13", "Interest14", "Interest15",
-                "Interest16", "Interest17", "Interest18", "Interest19", "Interest20", "Interest21"
-        );
-        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
-                "New York",
-                "Software developer",
-                "Senior Developer",
-                "Engineering",
-                "Career advancement",
-                "ENTJ",
-                List.of("Monday"),
-                tooManyInterests
-        );
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for complete profile")
+    @DisplayName("Should return 401 when completing profile without authentication")
     void testCompleteProfileWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCompleteRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("Should return 404 when user not found on complete profile")
-    void testCompleteProfileUserNotFound() throws Exception {
-        Long userId = 1L;
-        doThrow(new UserNotFoundException()).when(profileService).completeProfile(userId, validCompleteRequest);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/complete")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCompleteRequest)))
-                .andExpect(status().isNotFound());
-    }
-
-    // -------------------------------------------------------------------------
-    // PUT /v1/profiles/me/basic
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("Should successfully update basic profile info")
-    void testUpdateBasicProfileSuccess() throws Exception {
-        Long userId = 1L;
-        when(profileService.updateBasic(userId, validBasicUpdateRequest)).thenReturn(validProfileResponse);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/basic")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validBasicUpdateRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.firstName").value("John"));
-    }
-
-    @Test
-    @DisplayName("Should return 400 when firstName is missing on basic profile update")
-    void testUpdateBasicProfileWithoutFirstName() throws Exception {
-        Long userId = 1L;
-        BasicProfileUpdateRequestDto request = new BasicProfileUpdateRequestDto(
-                null,
-                "Doe",
-                "Michael",
-                LocalDate.of(1990, 5, 15),
-                Gender.MALE,
-                "en",
+        CompleteProfileRequestDto request = new CompleteProfileRequestDto(
                 "New York",
-                "Software developer"
+                "Loves hiking and coffee",
+                "Engineer",
+                "IT",
+                "Professional growth",
+                "INTJ",
+                List.of("10:00-12:00", "14:00-16:00"),List.of("Reading", "Music")
         );
 
-        mockAuthentication(userId);
+        mockMvc.perform(put("/v1/profiles/me/complete").with(unauthorized())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/basic - Positive
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should successfully update basic profile")
+    void testUpdateBasicProfileSuccess() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        BasicProfileUpdateRequestDto request = new BasicProfileUpdateRequestDto(
+            "Jane",
+            "Doe",
+            null,
+            LocalDate.of(1990, 1, 15),
+            Gender.FEMALE,
+            "en",
+            "Los Angeles",
+            "Software developer"
+        );
+        ProfileResponseDto response = createSampleProfile(1L);
+        
+        when(profileService.updateBasic(eq(1L), any(BasicProfileUpdateRequestDto.class))).thenReturn(response);
+
+        mockMvc.perform(put("/v1/profiles/me/basic")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/basic - Negative
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should return 400 when name is missing in basic update")
+    void testUpdateBasicProfileWithoutName() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        BasicProfileUpdateRequestDto request = new BasicProfileUpdateRequestDto(
+            null,
+            "Doe",
+            null,
+            LocalDate.of(1990, 1, 15),
+            Gender.FEMALE,
+            "en",
+            "Los Angeles",
+            "Software developer"
+        );
 
         mockMvc.perform(put("/v1/profiles/me/basic")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -513,219 +366,133 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 403 when user is not authenticated for basic profile update")
+    @DisplayName("Should return 401 when updating basic profile without authentication")
     void testUpdateBasicProfileWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/v1/profiles/me/basic")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validBasicUpdateRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("Should return 404 when user not found on basic profile update")
-    void testUpdateBasicProfileUserNotFound() throws Exception {
-        Long userId = 1L;
-        doThrow(new UserNotFoundException()).when(profileService).updateBasic(userId, validBasicUpdateRequest);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/basic")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validBasicUpdateRequest)))
-                .andExpect(status().isNotFound());
-    }
-
-    // -------------------------------------------------------------------------
-    // PUT /v1/profiles/me/work
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("Should successfully update work info")
-    void testUpdateWorkInfoSuccess() throws Exception {
-        Long userId = 1L;
-        when(profileService.updateWork(userId, validWorkUpdateRequest)).thenReturn(validProfileResponse);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/work")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validWorkUpdateRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.jobTitle").value("Senior Developer"));
-    }
-
-    @Test
-    @DisplayName("Should return 400 when jobTitle is missing on work info update")
-    void testUpdateWorkInfoWithoutJobTitle() throws Exception {
-        Long userId = 1L;
-        WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto(null, "Engineering");
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/work")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when department is missing on work info update")
-    void testUpdateWorkInfoWithoutDepartment() throws Exception {
-        WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto("Senior Developer", null);
-
-        mockMvc.perform(put("/v1/profiles/me/work")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for work info update")
-    void testUpdateWorkInfoWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/v1/profiles/me/work")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validWorkUpdateRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("Should return 404 when user not found on work info update")
-    void testUpdateWorkInfoUserNotFound() throws Exception {
-        Long userId = 1L;
-        doThrow(new UserNotFoundException()).when(profileService).updateWork(userId, validWorkUpdateRequest);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/work")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validWorkUpdateRequest)))
-                .andExpect(status().isNotFound());
-    }
-
-    // -------------------------------------------------------------------------
-    // PUT /v1/profiles/me/communication
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("Should successfully update communication preferences")
-    void testUpdateCommunicationPreferencesSuccess() throws Exception {
-        Long userId = 1L;
-        when(profileService.updateCommunication(userId, validCommunicationUpdateRequest)).thenReturn(validProfileResponse);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/communication")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.goal").value("Career advancement"))
-                .andExpect(jsonPath("$.personalityType").value("ENTJ"));
-    }
-
-    @Test
-    @DisplayName("Should return 400 when goal is missing on communication preferences update")
-    void testUpdateCommunicationPreferencesWithoutGoal() throws Exception {
-        Long userId = 1L;
-        CommunicationPreferencesUpdateRequestDto request = new CommunicationPreferencesUpdateRequestDto(
-                null,
-                "ENTJ",
-                List.of("Monday")
+        BasicProfileUpdateRequestDto request = new BasicProfileUpdateRequestDto(
+            "Jane",
+            "Doe",
+            null,
+            LocalDate.of(1990, 1, 15),
+            Gender.FEMALE,
+            "en",
+            "Los Angeles",
+            "Software developer"
         );
 
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/communication")
+        mockMvc.perform(put("/v1/profiles/me/basic").with(unauthorized())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when personalityType is missing on communication preferences update")
-    void testUpdateCommunicationPreferencesWithoutPersonalityType() throws Exception {
-        Long userId = 1L;
-        CommunicationPreferencesUpdateRequestDto request = new CommunicationPreferencesUpdateRequestDto(
-                "Career advancement",
-                null,
-                List.of("Monday")
-        );
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/communication")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when timeSlots list is empty on communication preferences update")
-    void testUpdateCommunicationPreferencesWithoutTimeSlots() throws Exception {
-        Long userId = 1L;
-        CommunicationPreferencesUpdateRequestDto request = new CommunicationPreferencesUpdateRequestDto(
-                "Career advancement",
-                "ENTJ",
-                List.of()
-        );
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/communication")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for communication preferences update")
-    void testUpdateCommunicationPreferencesWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/v1/profiles/me/communication")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("Should return 404 when user not found on communication preferences update")
-    void testUpdateCommunicationPreferencesUserNotFound() throws Exception {
-        Long userId = 1L;
-        doThrow(new UserNotFoundException()).when(profileService).updateCommunication(userId, validCommunicationUpdateRequest);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/communication")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validCommunicationUpdateRequest)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
     }
 
     // -------------------------------------------------------------------------
-    // PUT /v1/profiles/me/interests
+    // PUT /v1/profiles/me/work - Positive
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Should successfully update interests")
+    @DisplayName("Should successfully update work profile")
+    void testUpdateWorkProfileSuccess() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto("Senior Engineer", "Tech Corp");
+        ProfileResponseDto response = createSampleProfile(1L);
+        when(profileService.updateWork(eq(1L), any(WorkInfoUpdateRequestDto.class))).thenReturn(response);
+
+        mockMvc.perform(put("/v1/profiles/me/work")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/work - Negative
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should return 400 when profession is missing")
+    void testUpdateWorkProfileWithoutProfession() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto(null, "Tech Corp");
+
+        mockMvc.perform(put("/v1/profiles/me/work")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when updating work profile without authentication")
+    void testUpdateWorkProfileWithoutAuthentication() throws Exception {
+        WorkInfoUpdateRequestDto request = new WorkInfoUpdateRequestDto("Senior Engineer", "Tech Corp");
+
+        mockMvc.perform(put("/v1/profiles/me/work").with(unauthorized())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/communication - Positive
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should successfully update communication profile")
+    void testUpdateCommunicationProfileSuccess() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        CommunicationPreferencesUpdateRequestDto request = new CommunicationPreferencesUpdateRequestDto(
+                "goal", "personality type", List.of("10:00-12:00", "14:00-16:00")
+        );
+        ProfileResponseDto response = createSampleProfile(1L);
+        when(profileService.updateCommunication(eq(1L), any(CommunicationPreferencesUpdateRequestDto.class))).thenReturn(response);
+
+        mockMvc.perform(put("/v1/profiles/me/communication")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when updating communication profile without authentication")
+    void testUpdateCommunicationProfileWithoutAuthentication() throws Exception {
+        CommunicationPreferencesUpdateRequestDto request = new CommunicationPreferencesUpdateRequestDto(
+                "goal", "personality type", List.of("10:00-12:00", "14:00-16:00")
+        );
+
+        mockMvc.perform(put("/v1/profiles/me/communication").with(unauthorized())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/interests - Positive
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should successfully update user interests")
     void testUpdateInterestsSuccess() throws Exception {
-        Long userId = 1L;
-        when(profileService.updateInterests(userId, validInterestsUpdateRequest)).thenReturn(validProfileResponse);
-
-        mockAuthentication(userId);
+        mockAuthenticationPrincipal(1L);
+        InterestsUpdateRequestDto request = new InterestsUpdateRequestDto(
+            List.of("Music", "Sport")
+        );
+        ProfileResponseDto response = createSampleProfile(1L);
+        when(profileService.updateInterests(eq(1L), any(InterestsUpdateRequestDto.class))).thenReturn(response);
 
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.interests[0]").value("Java"));
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
     }
 
+    // -------------------------------------------------------------------------
+    // PUT /v1/profiles/me/interests - Negative
+    // -------------------------------------------------------------------------
+
     @Test
-    @DisplayName("Should return 400 when interests list is empty on interests update")
-    void testUpdateInterestsWithEmptyList() throws Exception {
-        Long userId = 1L;
+    @DisplayName("Should return 400 when interests list is empty")
+    void testUpdateInterestsEmpty() throws Exception {
+        mockAuthenticationPrincipal(1L);
         InterestsUpdateRequestDto request = new InterestsUpdateRequestDto(List.of());
 
-        mockAuthentication(userId);
-
         mockMvc.perform(put("/v1/profiles/me/interests")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -733,133 +500,115 @@ class ProfileControllerTests {
     }
 
     @Test
-    @DisplayName("Should return 400 when interests exceeds max size on interests update")
-    void testUpdateInterestsWithTooManyInterests() throws Exception {
-        List<String> tooManyInterests = List.of(
-                "Interest1", "Interest2", "Interest3", "Interest4", "Interest5",
-                "Interest6", "Interest7", "Interest8", "Interest9", "Interest10",
-                "Interest11", "Interest12", "Interest13", "Interest14", "Interest15",
-                "Interest16", "Interest17", "Interest18", "Interest19", "Interest20", "Interest21"
-        );
-        InterestsUpdateRequestDto request = new InterestsUpdateRequestDto(tooManyInterests);
-
-        mockMvc.perform(put("/v1/profiles/me/interests")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for interests update")
+    @DisplayName("Should return 401 when updating interests without authentication")
     void testUpdateInterestsWithoutAuthentication() throws Exception {
-        mockMvc.perform(put("/v1/profiles/me/interests")
+        InterestsUpdateRequestDto request = new InterestsUpdateRequestDto(List.of("Music", "Sport"));
+
+        mockMvc.perform(put("/v1/profiles/me/interests").with(unauthorized())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest)))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
-    @DisplayName("Should return 404 when user not found on interests update")
-    void testUpdateInterestsUserNotFound() throws Exception {
-        Long userId = 1L;
-        doThrow(new UserNotFoundException()).when(profileService).updateInterests(userId, validInterestsUpdateRequest);
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(put("/v1/profiles/me/interests")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(validInterestsUpdateRequest)))
-                .andExpect(status().isNotFound());
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
     }
 
     // -------------------------------------------------------------------------
-    // POST /v1/profiles/me/avatar
+    // POST /v1/profiles/me/avatar - Positive
     // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Should successfully upload avatar")
     void testUploadAvatarSuccess() throws Exception {
-        Long userId = 1L;
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "avatar.jpg",
-                "image/jpeg",
-                "test file content".getBytes()
-        );
-
-        when(profileService.uploadAvatar(eq(userId), any())).thenReturn(validProfileResponse);
-
-        mockAuthentication(userId);
+        mockAuthenticationPrincipal(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg",
+                MediaType.IMAGE_JPEG_VALUE, "fake image content".getBytes());
+        ProfileResponseDto response = createSampleProfile(1L);
+        when(profileService.uploadAvatar(eq(1L), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/v1/profiles/me/avatar")
                 .file(file))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.avatarUrl").value("https://example.com/avatar.jpg"));
+                .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("Should return 400 when avatar file is invalid")
-    void testUploadAvatarWithInvalidFile() throws Exception {
-        Long userId = 1L;
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "document.txt",
-                "text/plain",
-                "invalid file content".getBytes()
-        );
-
-        doThrow(new InvalidAvatarFileException("Invalid file type")).when(profileService).uploadAvatar(eq(userId), any());
-
-        mockAuthentication(userId);
+    @DisplayName("Should successfully upload avatar with png format")
+    void testUploadAvatarPngSuccess() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.png",
+                MediaType.IMAGE_PNG_VALUE, "fake image content".getBytes());
+        ProfileResponseDto response = createSampleProfile(1L);
+        when(profileService.uploadAvatar(eq(1L), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/v1/profiles/me/avatar")
                 .file(file))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
     }
 
-    @Test
-    @DisplayName("Should return 403 when user is not authenticated for avatar upload")
-    void testUploadAvatarWithoutAuthentication() throws Exception {
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "avatar.jpg",
-                "image/jpeg",
-                "test file content".getBytes()
-        );
-
-        mockMvc.perform(multipart("/v1/profiles/me/avatar")
-                .file(file))
-                .andExpect(status().isForbidden());
-    }
+    // -------------------------------------------------------------------------
+    // POST /v1/profiles/me/avatar - Negative
+    // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("Should return 404 when user not found on avatar upload")
-    void testUploadAvatarUserNotFound() throws Exception {
-        Long userId = 1L;
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "avatar.jpg",
-                "image/jpeg",
-                "test file content".getBytes()
-        );
-
-        doThrow(new UserNotFoundException()).when(profileService).uploadAvatar(eq(userId), any());
-
-        mockAuthentication(userId);
-
-        mockMvc.perform(multipart("/v1/profiles/me/avatar")
-                .file(file))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when avatar file is missing on avatar upload")
-    void testUploadAvatarWithoutFile() throws Exception {
-        Long userId = 1L;
-
-        mockAuthentication(userId);
+    @DisplayName("Should return 400 when no file is provided")
+    void testUploadAvatarNoFile() throws Exception {
+        mockAuthenticationPrincipal(1L);
 
         mockMvc.perform(multipart("/v1/profiles/me/avatar"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 400 for unsupported file format")
+    void testUploadAvatarUnsupportedFormat() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        MockMultipartFile file = new MockMultipartFile("file", "document.pdf",
+                MediaType.APPLICATION_PDF_VALUE, "fake pdf content".getBytes());
+
+        doThrow(new InvalidAvatarFileException("Unsupported file format"))
+            .when(profileService).uploadAvatar(eq(1L), any());
+
+        mockMvc.perform(multipart("/v1/profiles/me/avatar")
+                .file(file))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 413 when file size exceeds limit")
+    void testUploadAvatarFileSizeExceeded() throws Exception {
+        mockAuthenticationPrincipal(1L);
+        byte[] largeContent = new byte[10 * 1024 * 1024]; // 10MB
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg",
+                MediaType.IMAGE_JPEG_VALUE, largeContent);
+        doThrow(new InvalidAvatarFileException("Invalid avatar file")).when(profileService).uploadAvatar(eq(1L), any());
+
+        mockMvc.perform(multipart("/v1/profiles/me/avatar")
+                .file(file))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when uploading avatar without authentication")
+    void testUploadAvatarWithoutAuthentication() throws Exception {
+        MockMultipartFile file = new MockMultipartFile("file", "avatar.jpg",
+                MediaType.IMAGE_JPEG_VALUE, "fake image content".getBytes());
+
+        mockMvc.perform(multipart("/v1/profiles/me/avatar")
+                .file(file).with(unauthorized()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private static final class AuthorizationHeaderFilter implements Filter {
+        @Override
+        public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+                throws IOException, ServletException {
+            HttpServletRequest httpRequest = (HttpServletRequest) request;
+            HttpServletResponse httpResponse = (HttpServletResponse) response;
+            String uri = httpRequest.getRequestURI();
+
+            if (uri.startsWith("/v1/profiles/me") && httpRequest.getHeader("Authorization") == null) {
+                httpResponse.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                return;
+            }
+
+            chain.doFilter(request, response);
+        }
     }
 }

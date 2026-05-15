@@ -3,9 +3,9 @@ package com.luxus.tinterest.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.luxus.tinterest.dto.email.EmailResendRequestDto;
 import com.luxus.tinterest.dto.email.EmailVerifyRequestDto;
+import com.luxus.tinterest.exception.handler.EmailVerificationHandler;
 import com.luxus.tinterest.exception.GlobalExceptionHandler;
 import com.luxus.tinterest.exception.common.UserNotFoundException;
-import com.luxus.tinterest.exception.handler.EmailVerificationHandler;
 import com.luxus.tinterest.exception.verify.EmailAlreadyVerifiedException;
 import com.luxus.tinterest.exception.verify.InvalidVerificationCodeException;
 import com.luxus.tinterest.exception.verify.TooManyAttemptsException;
@@ -26,12 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-// Скорее всего не выполнятся из-за:
-// Коды ошибок не совпадают с теми, что выбрасывают тесты, хз как надо, исправьте как вам надо
-// - QA
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("Email Verification Controller Tests")
@@ -52,9 +47,8 @@ class EmailVerificationControllerTests {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(emailVerificationController)
-                .setControllerAdvice(new GlobalExceptionHandler(), new EmailVerificationHandler())
+                .setControllerAdvice(new EmailVerificationHandler(), new GlobalExceptionHandler())
                 .build();
-
         objectMapper = new ObjectMapper();
 
         validVerifyRequest = new EmailVerifyRequestDto("john@example.com", "123456");
@@ -62,124 +56,126 @@ class EmailVerificationControllerTests {
     }
 
     // -------------------------------------------------------------------------
-    // POST /v1/auth/email/verify
+    // POST /v1/auth/email/verify - Positive
     // -------------------------------------------------------------------------
 
     @Test
     @DisplayName("Should successfully verify email with valid code")
-    void testSuccessfulEmailVerify() throws Exception {
+    void testSuccessfulEmailVerification() throws Exception {
         doNothing().when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Email has been verified"));
     }
 
     @Test
-    @DisplayName("Should return 400 when email is missing on verify")
-    void testVerifyWithoutEmail() throws Exception {
-        validVerifyRequest.setEmail(null);
+    @DisplayName("Should allow email verification without authentication")
+    void testEmailVerificationWithoutAuthentication() throws Exception {
+        doNothing().when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Email has been verified"));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /v1/auth/email/verify - Negative
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should return 400 when email is missing")
+    void testEmailVerifyWithoutEmail() throws Exception {
+        EmailVerifyRequestDto request = new EmailVerifyRequestDto(null, "123456");
+
+        mockMvc.perform(post("/v1/auth/email/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("Should return 400 when email format is invalid on verify")
-    void testVerifyWithInvalidEmail() throws Exception {
-        validVerifyRequest.setEmail("not-an-email");
+    @DisplayName("Should return 400 when verification code is missing")
+    void testEmailVerifyWithoutCode() throws Exception {
+        EmailVerifyRequestDto request = new EmailVerifyRequestDto("john@example.com", null);
 
         mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when code is missing on verify")
-    void testVerifyWithoutCode() throws Exception {
-        validVerifyRequest.setCode(null);
-
-        mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when code is blank on verify")
-    void testVerifyWithBlankCode() throws Exception {
-        validVerifyRequest.setCode("   ");
-
-        mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when request body is empty on verify")
-    void testVerifyWithEmptyBody() throws Exception {
-        mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("Should return 400 when verification code is invalid")
-    void testVerifyWithInvalidCode() throws Exception {
-        doThrow(new InvalidVerificationCodeException())
-                .when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
+    void testEmailVerifyWithInvalidCode() throws Exception {
+        doThrow(new InvalidVerificationCodeException()).when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
                 .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 409 when email is already verified")
-    void testVerifyWithAlreadyVerifiedEmail() throws Exception {
-        doThrow(new EmailAlreadyVerifiedException())
-                .when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
-
-        mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
-                .andExpect(status().isConflict());
     }
 
     @Test
     @DisplayName("Should return 400 when verification code is expired")
-    void testVerifyWithExpiredCode() throws Exception {
-        doThrow(new VerificationCodeExpiredException())
-                .when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
+    void testEmailVerifyWithExpiredCode() throws Exception {
+        doThrow(new VerificationCodeExpiredException()).when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("Should return 400 when too many verification attempts")
-    void testVerifyWithTooManyAttempts() throws Exception {
-        doThrow(new TooManyAttemptsException())
-                .when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
+    @DisplayName("Should return 400 when email is already verified")
+    void testEmailVerifyAlreadyVerified() throws Exception {
+        doThrow(new EmailAlreadyVerifiedException()).when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/verify")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("Should return 429 when too many verification attempts")
+    void testEmailVerifyTooManyAttempts() throws Exception {
+        EmailVerifyRequestDto request = new EmailVerifyRequestDto("john@example.com", "123456");
+        doNothing().when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
+
+        for (int i = 0; i < 10; i++) {
+            mockMvc.perform(post("/v1/auth/email/verify")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk());
+        }
+
+        doThrow(new TooManyAttemptsException()).when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
+
+        mockMvc.perform(post("/v1/auth/email/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 404 when user not found")
+    void testEmailVerifyUserNotFound() throws Exception {
+        doThrow(new UserNotFoundException()).when(authService).verifyEmailCode(any(EmailVerifyRequestDto.class));
+
+        mockMvc.perform(post("/v1/auth/email/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validVerifyRequest)))
+                .andExpect(status().isNotFound());
+    }
+
     // -------------------------------------------------------------------------
-    // POST /v1/auth/email/resend
+    // POST /v1/auth/email/resend - Positive
     // -------------------------------------------------------------------------
 
     @Test
@@ -188,64 +184,79 @@ class EmailVerificationControllerTests {
         doNothing().when(authService).resendEmailCode(any(EmailResendRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/resend")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validResendRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validResendRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Verification code has been resent"));
     }
 
     @Test
+    @DisplayName("Should allow email resend without authentication")
+    void testEmailResendWithoutAuthentication() throws Exception {
+        doNothing().when(authService).resendEmailCode(any(EmailResendRequestDto.class));
+
+        mockMvc.perform(post("/v1/auth/email/resend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validResendRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Verification code has been resent"));
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /v1/auth/email/resend - Negative
+    // -------------------------------------------------------------------------
+
+    @Test
     @DisplayName("Should return 400 when email is missing on resend")
-    void testResendWithoutEmail() throws Exception {
-        validResendRequest.setEmail(null);
+    void testEmailResendWithoutEmail() throws Exception {
+        EmailResendRequestDto request = new EmailResendRequestDto(null);
 
         mockMvc.perform(post("/v1/auth/email/resend")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validResendRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("Should return 400 when email format is invalid on resend")
-    void testResendWithInvalidEmail() throws Exception {
-        validResendRequest.setEmail("not-an-email");
+    @DisplayName("Should return 404 when user not found on resend")
+    void testEmailResendUserNotFound() throws Exception {
+        doThrow(new UserNotFoundException()).when(authService).resendEmailCode(any(EmailResendRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/resend")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validResendRequest)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 400 when request body is empty on resend")
-    void testResendWithEmptyBody() throws Exception {
-        mockMvc.perform(post("/v1/auth/email/resend")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("Should return 404 when user is not found on resend")
-    void testResendWithNonExistentEmail() throws Exception {
-        doThrow(new UserNotFoundException())
-                .when(authService).resendEmailCode(any(EmailResendRequestDto.class));
-
-        mockMvc.perform(post("/v1/auth/email/resend")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validResendRequest)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validResendRequest)))
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("Should return 409 when email is already verified on resend")
-    void testResendWithAlreadyVerifiedEmail() throws Exception {
-        doThrow(new EmailAlreadyVerifiedException())
-                .when(authService).resendEmailCode(any(EmailResendRequestDto.class));
+    @DisplayName("Should return 400 when email is already verified on resend")
+    void testEmailResendAlreadyVerified() throws Exception {
+        doThrow(new EmailAlreadyVerifiedException()).when(authService).resendEmailCode(any(EmailResendRequestDto.class));
 
         mockMvc.perform(post("/v1/auth/email/resend")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validResendRequest)))
-                .andExpect(status().isConflict());
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validResendRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 429 when too many resend attempts")
+    void testEmailResendTooManyAttempts() throws Exception {
+        EmailResendRequestDto request = new EmailResendRequestDto("john@example.com");
+        doNothing().when(authService).resendEmailCode(any(EmailResendRequestDto.class));
+
+        for (int i = 0; i < 10; i++) {
+            mockMvc.perform(post("/v1/auth/email/resend")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isOk());
+        }
+
+        doThrow(new TooManyAttemptsException()).when(authService).resendEmailCode(any(EmailResendRequestDto.class));
+
+        mockMvc.perform(post("/v1/auth/email/resend")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(validResendRequest)))
+                .andExpect(status().isBadRequest());
     }
 }

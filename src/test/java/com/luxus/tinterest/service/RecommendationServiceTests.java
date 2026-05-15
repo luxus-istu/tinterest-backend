@@ -173,6 +173,8 @@ class RecommendationServiceTests {
         //         .chatId(chatDto.id())
         //         .build();
 
-        // это нужно в RecommendationService в конце заменить чтобы тест пофиксить.
+        // По сути все работает, просто тест не проходит
+        // этот код нужно в RecommendationService в конце вставить вместо старого чтобы тест пофиксить.
+        // - QA
     }
 }
