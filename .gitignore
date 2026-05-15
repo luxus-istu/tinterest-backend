@@ -36,3 +36,7 @@ build/
 src/main/resources/keys/
 src/main/resources/keystore.p12
 secrets/
+allure-results/
+target/allure-results/
+build/allure-results/
+allure-report/
