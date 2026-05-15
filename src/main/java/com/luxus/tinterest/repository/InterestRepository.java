@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface InterestRepository extends JpaRepository<Interest, Long> {
@@ -16,4 +17,6 @@ public interface InterestRepository extends JpaRepository<Interest, Long> {
 
     @Query("select i from Interest i where lower(i.name) in :normalizedNames")
     List<Interest> findAllByNormalizedNames(@Param("normalizedNames") Collection<String> normalizedNames);
+
+    boolean existsByNameIgnoreCase(String name);
 }

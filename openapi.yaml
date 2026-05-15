@@ -860,6 +860,78 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /v1/admin/interests/add:
+    post:
+      tags:
+        - Администрирование
+      summary: Добавление нового интереса
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddInterestRequestDto'
+      responses:
+        '201':
+          description: Интерес успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterestResponseDto'
+        '400':
+          description: Ошибка валидации или интерес уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+              examples:
+                validation_error:
+                  value:
+                    code: VALIDATION_ERROR
+                    message: Validation failed
+                    fieldErrors: { name: "Field name is required" }
+                already_exists:
+                  value:
+                    code: INTEREST_ALREADY_EXISTS
+                    message: Interest with name 'Java' already exists
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/interests/delete/{interestId}:
+    delete:
+      tags:
+        - Администрирование
+      summary: Удаление интереса
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: interestId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Интерес удален
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Интерес не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INTEREST_NOT_FOUND
+                message: Interest with id 123 not found
+
   # WebSocket Documentation (Informational Paths)
   /ws:
     get:
@@ -1278,6 +1350,12 @@ components:
         lastWeek: { type: integer, format: int64 }
         lastMonth: { type: integer, format: int64 }
 
+    AddInterestRequestDto:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, description: "Название интереса" }
+
     # Errors
     ErrorCode:
       type: string
@@ -1305,6 +1383,8 @@ components:
         - INVALID_ADMIN_OPERATION
         - INVALID_AVATAR_FILE
         - STORAGE_ERROR
+        - INTEREST_ALREADY_EXISTS
+        - INTEREST_NOT_FOUND
 
     ErrorResponse:
       type: object
