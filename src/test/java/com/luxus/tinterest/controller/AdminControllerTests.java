@@ -1,13 +1,20 @@
 package com.luxus.tinterest.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.luxus.tinterest.dto.admin.AddInterestRequestDto;
 import com.luxus.tinterest.dto.admin.AdminStatisticsResponseDto;
 import com.luxus.tinterest.dto.admin.UserSummaryResponseDto;
+import com.luxus.tinterest.dto.interest.InterestResponseDto;
+import com.luxus.tinterest.dto.profile.InterestsUpdateRequestDto;
+import com.luxus.tinterest.entity.Interest;
 import com.luxus.tinterest.exception.GlobalExceptionHandler;
+import com.luxus.tinterest.exception.admin.InterestAlreadyExistsException;
+import com.luxus.tinterest.exception.admin.InterestNotFoundException;
 import com.luxus.tinterest.exception.admin.InvalidAdminOperationException;
 import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.exception.handler.AdminHandler;
 import com.luxus.tinterest.service.AdminStatisticsService;
+import com.luxus.tinterest.service.InterestService;
 import com.luxus.tinterest.service.UserService;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,9 +29,13 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import jakarta.persistence.criteria.CriteriaBuilder.In;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -55,6 +66,9 @@ class AdminControllerTests {
     private UserService userService;
 
     @Mock
+    private InterestService interestService;
+
+    @Mock
     private AdminStatisticsService adminStatisticsService;
 
     @InjectMocks
@@ -74,6 +88,21 @@ class AdminControllerTests {
         objectMapper = new ObjectMapper();
         objectMapper.findAndRegisterModules();
     }
+
+    private RequestPostProcessor authorized() {
+        return request -> {
+            request.addHeader("Authorization", "Bearer dummy-token");
+            return request;
+        };
+    }
+
+    private RequestPostProcessor unauthorized() {
+        return request -> {
+            request.removeHeader("Authorization");
+            return request;
+        };
+    }
+
 
     // -------------------------------------------------------------------------
     // GET /v1/admin/statistics - Positive
@@ -222,15 +251,6 @@ class AdminControllerTests {
                 .andExpect(status().isNoContent());
     }
 
-    @Test
-    @DisplayName("Should successfully block user who is already active")
-    void testBlockActiveUser() throws Exception {
-        doNothing().when(userService).blockUser(1L);
-
-        mockMvc.perform(post("/v1/admin/users/1/block"))
-                .andExpect(status().isNoContent());
-    }
-
     // -------------------------------------------------------------------------
     // POST /v1/admin/users/{userId}/block - Negative
     // -------------------------------------------------------------------------
@@ -330,19 +350,98 @@ class AdminControllerTests {
                 .andExpect(status().isUnauthorized());
     }
 
-    private RequestPostProcessor authorized() {
-        return request -> {
-            request.addHeader("Authorization", "Bearer dummy-token");
-            return request;
-        };
+    // -------------------------------------------------------------------------
+    // POST /v1/admin/interests/add - Posititve
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should successfully add new interest")
+    void testAddInterest() throws Exception {
+        AddInterestRequestDto newInterest = AddInterestRequestDto.builder()
+                .name("New Interest")
+                .build();
+
+        when(interestService.addInterest("New Interest")).thenReturn(new InterestResponseDto(1L, "New Interest"));
+
+        mockMvc.perform(post("/v1/admin/interests/add")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(newInterest)))
+                .andExpect(status().isCreated());
     }
 
-    private RequestPostProcessor unauthorized() {
-        return request -> {
-            request.removeHeader("Authorization");
-            return request;
-        };
+
+    // -------------------------------------------------------------------------
+    // POST /v1/admin/interests/add - Negative
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should return 400 when adding interest without name")
+    void testAddInterestWithoutName() throws Exception {
+        AddInterestRequestDto newInterest = AddInterestRequestDto.builder()
+                .name(null)
+                .build();
+
+        mockMvc.perform(post("/v1/admin/interests/add")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(newInterest)))
+                .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("Should return 409 when interest already exists")
+    void testAddInterestAlreadyExists() throws Exception {
+        AddInterestRequestDto newInterest = AddInterestRequestDto.builder()
+                .name("Existing Interest")
+                .build();
+
+        doThrow(new InterestAlreadyExistsException("Interest already exists")).when(interestService).addInterest("Existing Interest");
+
+        mockMvc.perform(post("/v1/admin/interests/add")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(newInterest)))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when accessing admin statistics without authorization")
+    void testAddInterestWithoutAuthorization() throws Exception {
+        mockMvc.perform(post("/v1/admin/interests/add").with(unauthorized()))
+                .andExpect(status().isUnauthorized());
+    }
+    
+    // -------------------------------------------------------------------------
+    // DELETE /v1/admin/interests/delete/{interestId} - Posititve
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should successfully delete interest")
+    void testDeleteInterest() throws Exception {
+        doNothing().when(interestService).deleteInterest(1L);
+
+        mockMvc.perform(delete("/v1/admin/interests/delete/1"))
+                .andExpect(status().isNoContent());
+    }
+
+    // -------------------------------------------------------------------------
+    // DELETE /v1/admin/interests/delete/{interestId} - Negative
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("Should return 404 when deleting non-existent interest")
+    void testDeleteNonExistentInterest() throws Exception {
+        doThrow(new InterestNotFoundException("Interest not found")).when(interestService).deleteInterest(999L);
+
+        mockMvc.perform(delete("/v1/admin/interests/delete/999"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Should return 401 when accessing admin statistics without authorization")
+    void testDeleteInterestWithoutAuthorization() throws Exception {
+        mockMvc.perform(delete("/v1/admin/interests/delete/1").with(unauthorized()))
+                .andExpect(status().isUnauthorized());
+    }
+
 
     private static final class AuthorizationHeaderFilter implements Filter {
         @Override
