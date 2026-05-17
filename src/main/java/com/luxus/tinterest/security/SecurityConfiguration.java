@@ -2,6 +2,7 @@ package com.luxus.tinterest.security;
 
 
 import com.luxus.tinterest.security.filter.JwtAuthenticationFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -47,6 +48,15 @@ public class SecurityConfiguration {
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers("/v1/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
+                )
+
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                            response.setContentType("application/json");
+                            response.setCharacterEncoding("UTF-8");
+                            response.getWriter().write("{\"code\": \"UNAUTHORIZED\", \"message\": \"Full authentication is required to access this resource\"}");
+                        })
                 )
 
                 .addFilterBefore(jwtAuthenticationFilter, AuthorizationFilter.class);
