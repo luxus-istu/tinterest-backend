@@ -5,6 +5,7 @@ import com.luxus.tinterest.dto.chat.ChatMessagesPageResponseDto;
 import com.luxus.tinterest.dto.chat.ChatSummaryResponseDto;
 import com.luxus.tinterest.dto.chat.DirectChatRequestDto;
 import com.luxus.tinterest.dto.chat.GroupChatCreateRequestDto;
+import com.luxus.tinterest.dto.chat.GroupChatUpdateRequestDto;
 import com.luxus.tinterest.dto.chat.MessageSendRequestDto;
 import com.luxus.tinterest.service.ChatService;
 import jakarta.validation.Valid;
@@ -14,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,6 +53,26 @@ public class ChatController {
     public ResponseEntity<ChatSummaryResponseDto> createGroupChat(@AuthenticationPrincipal Long userId,
                                                                   @Valid @RequestBody GroupChatCreateRequestDto request) {
         return ResponseEntity.ok(chatService.createGroupChat(requireUserId(userId), request));
+    }
+
+    @PatchMapping("/{chatId}")
+    public ResponseEntity<ChatSummaryResponseDto> updateGroupChat(@AuthenticationPrincipal Long userId,
+                                                                  @PathVariable Long chatId,
+                                                                  @Valid @RequestBody GroupChatUpdateRequestDto request) {
+        return ResponseEntity.ok(chatService.updateGroupChat(requireUserId(userId), chatId, request));
+    }
+
+    @GetMapping("/discover")
+    public ResponseEntity<Page<ChatSummaryResponseDto>> getDiscoverableChats(@AuthenticationPrincipal Long userId,
+                                                                             @RequestParam(defaultValue = "0") int page,
+                                                                             @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(chatService.getDiscoverableChats(requireUserId(userId), page, size));
+    }
+
+    @PostMapping("/{chatId}/join")
+    public ResponseEntity<ChatSummaryResponseDto> joinGroupChat(@AuthenticationPrincipal Long userId,
+                                                                @PathVariable Long chatId) {
+        return ResponseEntity.ok(chatService.joinGroupChat(requireUserId(userId), chatId));
     }
 
     @GetMapping("/{chatId}/messages")

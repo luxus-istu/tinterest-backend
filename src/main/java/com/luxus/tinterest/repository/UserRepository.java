@@ -30,6 +30,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Page<User> findAllByRoleAndEmailStartingWithIgnoreCase(Role role, String email, Pageable pageable);
 
+    @Query("SELECT u FROM User u WHERE u.role = 'USER' AND u.emailVerified = true AND (" +
+            "LOWER(u.email) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(u.firstName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(u.lastName) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+            "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE LOWER(CONCAT('%', :query, '%'))" +
+            ")")
+    Page<User> searchUsers(@Param("query") String query, Pageable pageable);
+
     @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :since")
     long countByCreatedAtAfter(@Param("since") java.time.Instant since);
 

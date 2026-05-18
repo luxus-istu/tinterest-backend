@@ -4,6 +4,7 @@ import com.luxus.tinterest.dto.chat.ChatMemberResponseDto;
 import com.luxus.tinterest.dto.chat.ChatMessageResponseDto;
 import com.luxus.tinterest.dto.chat.ChatSummaryResponseDto;
 import com.luxus.tinterest.dto.chat.GroupChatCreateRequestDto;
+import com.luxus.tinterest.dto.chat.GroupChatUpdateRequestDto;
 import com.luxus.tinterest.dto.chat.MessageSendRequestDto;
 import com.luxus.tinterest.entity.Chat;
 import com.luxus.tinterest.entity.ChatMember;
@@ -15,6 +16,7 @@ import com.luxus.tinterest.entity.User;
 import com.luxus.tinterest.exception.chat.ChatAccessDeniedException;
 import com.luxus.tinterest.exception.chat.ChatNotFoundException;
 import com.luxus.tinterest.exception.chat.InvalidChatOperationException;
+import com.luxus.tinterest.exception.chat.InvalidChatRoleException;
 import com.luxus.tinterest.exception.common.UserNotFoundException;
 import com.luxus.tinterest.repository.ChatMemberRepository;
 import com.luxus.tinterest.repository.ChatRepository;
@@ -112,6 +114,7 @@ public class ChatService {
                 .type(ChatType.GROUP)
                 .title(cleanValue(request.title()))
                 .createdBy(currentUser)
+                .isPublic(request.isPublic() != null && request.isPublic())
                 .build());
 
         chatMemberRepository.save(ChatMember.builder()
@@ -128,6 +131,57 @@ public class ChatService {
                 .build()));
 
         return toChatSummary(loadChatWithMembers(chat.getId()), currentUserId);
+    }
+
+    @Transactional
+    public ChatSummaryResponseDto updateGroupChat(Long currentUserId, Long chatId, GroupChatUpdateRequestDto request) {
+        Chat chat = loadChatWithMembers(chatId);
+        if (chat.getType() != ChatType.GROUP) {
+            throw new InvalidChatOperationException("Only group chats can be updated");
+        }
+        
+        ChatMember member = requireMember(chatId, currentUserId);
+        if (member.getRole() != ChatMemberRole.OWNER) {
+            throw new InvalidChatRoleException("Only chat owner can update group info");
+        }
+
+        if (request.title() != null) {
+            chat.setTitle(cleanValue(request.title()));
+        }
+        if (request.isPublic() != null) {
+            chat.setPublic(request.isPublic());
+        }
+
+        return toChatSummary(chatRepository.save(chat), currentUserId);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ChatSummaryResponseDto> getDiscoverableChats(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return chatRepository.findDiscoverableChats(userId, pageable)
+                .map(chat -> toChatSummary(chat, userId));
+    }
+
+    @Transactional
+    public ChatSummaryResponseDto joinGroupChat(Long userId, Long chatId) {
+        Chat chat = loadChatWithMembers(chatId);
+        if (chat.getType() != ChatType.GROUP || !chat.isPublic()) {
+            throw new InvalidChatOperationException("Cannot join this chat");
+        }
+
+        if (chatMemberRepository.existsByChatIdAndUserId(chatId, userId)) {
+            throw new InvalidChatOperationException("You are already a member of this chat");
+        }
+
+        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        chatMemberRepository.save(ChatMember.builder()
+                .chat(chat)
+                .user(user)
+                .role(ChatMemberRole.MEMBER)
+                .lastReadAt(LocalDateTime.now())
+                .build());
+
+        return toChatSummary(loadChatWithMembers(chatId), userId);
     }
 
     @Transactional(readOnly = true)
@@ -203,6 +257,7 @@ public class ChatService {
                 chat.getId(),
                 chat.getType(),
                 chat.getTitle(),
+                chat.isPublic(),
                 chat.getCreatedBy().getId(),
                 chat.getCreatedAt(),
                 chat.getMembers().stream()

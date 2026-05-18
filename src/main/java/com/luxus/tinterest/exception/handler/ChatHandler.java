@@ -5,6 +5,7 @@ import com.luxus.tinterest.exception.ErrorResponse;
 import com.luxus.tinterest.exception.chat.ChatAccessDeniedException;
 import com.luxus.tinterest.exception.chat.ChatNotFoundException;
 import com.luxus.tinterest.exception.chat.InvalidChatOperationException;
+import com.luxus.tinterest.exception.chat.InvalidChatRoleException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,6 +24,12 @@ public class ChatHandler {
     public ResponseEntity<ErrorResponse> handleChatAccessDenied(ChatAccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body(new ErrorResponse(ErrorCode.CHAT_ACCESS_DENIED.name(), ex.getMessage(), null));
+    }
+
+    @ExceptionHandler(InvalidChatRoleException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidChatRole(InvalidChatRoleException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse(ErrorCode.INVALID_CHAT_ROLE.name(), ex.getMessage(), null));
     }
 
     @ExceptionHandler(InvalidChatOperationException.class)

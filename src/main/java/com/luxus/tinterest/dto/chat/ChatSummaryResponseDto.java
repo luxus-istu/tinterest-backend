@@ -9,6 +9,7 @@ public record ChatSummaryResponseDto(
         Long id,
         ChatType type,
         String title,
+        boolean isPublic,
         Long createdBy,
         LocalDateTime createdAt,
         List<ChatMemberResponseDto> members,

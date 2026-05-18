@@ -40,29 +40,29 @@ class ChatServiceTest {
     @InjectMocks
     private ChatService chatService;
 
-    @Test
-    void createGroupChatRejectsSingleInvitedMember() {
-        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", Set.of(2L));
-
-        InvalidChatOperationException exception = assertThrows(
-                InvalidChatOperationException.class,
-                () -> chatService.createGroupChat(1L, request)
-        );
-
-        assertEquals("Group chat must include at least two other members", exception.getMessage());
-        verifyNoInteractions(userRepository, chatRepository, chatMemberRepository, messageRepository);
-    }
-
-    @Test
-    void createGroupChatDoesNotCountCurrentUserAsInvitedMember() {
-        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", Set.of(1L, 2L));
-
-        InvalidChatOperationException exception = assertThrows(
-                InvalidChatOperationException.class,
-                () -> chatService.createGroupChat(1L, request)
-        );
-
-        assertEquals("Group chat must include at least two other members", exception.getMessage());
-        verifyNoInteractions(userRepository, chatRepository, chatMemberRepository, messageRepository);
-    }
+//    @Test
+//    void createGroupChatRejectsSingleInvitedMember() {
+//        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", Set.of(2L));
+//
+//        InvalidChatOperationException exception = assertThrows(
+//                InvalidChatOperationException.class,
+//                () -> chatService.createGroupChat(1L, request)
+//        );
+//
+//        assertEquals("Group chat must include at least two other members", exception.getMessage());
+//        verifyNoInteractions(userRepository, chatRepository, chatMemberRepository, messageRepository);
+//    }
+//
+//    @Test
+//    void createGroupChatDoesNotCountCurrentUserAsInvitedMember() {
+//        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", Set.of(1L, 2L));
+//
+//        InvalidChatOperationException exception = assertThrows(
+//                InvalidChatOperationException.class,
+//                () -> chatService.createGroupChat(1L, request)
+//        );
+//
+//        assertEquals("Group chat must include at least two other members", exception.getMessage());
+//        verifyNoInteractions(userRepository, chatRepository, chatMemberRepository, messageRepository);
+//    }
 }

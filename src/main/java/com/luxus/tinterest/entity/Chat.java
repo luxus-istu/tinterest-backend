@@ -45,6 +45,9 @@ public class Chat {
     @Column(name = "title", length = 120)
     private String title;
 
+    @Column(name = "is_public", nullable = false)
+    private boolean isPublic = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;

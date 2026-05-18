@@ -61,6 +61,14 @@ public class UserService {
         return userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
     }
 
+    @Transactional(readOnly = true)
+    public Page<UserSummaryResponseDto> searchUsers(String query, Pageable pageable) {
+        if (query == null || query.isBlank()) {
+            return userRepository.findAllByRole(Role.USER, pageable).map(userMapper::toUserSummaryResponseDto);
+        }
+        return userRepository.searchUsers(query.trim(), pageable).map(userMapper::toUserSummaryResponseDto);
+    }
+
     public Page<UserSummaryResponseDto> getAllUsers(String email, Pageable pageable) {
         Page<User> users;
         if (email != null && !email.isBlank()) {
