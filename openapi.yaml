@@ -445,6 +445,36 @@ paths:
                 code: STORAGE_ERROR
                 message: Failed to upload file to storage
 
+  # Users
+  /v1/users/search:
+    get:
+      tags:
+        - Пользователи
+      summary: Поиск пользователей по имени, фамилии или почте
+      parameters:
+        - name: query
+          in: query
+          description: Строка поиска (имя, фамилия или email)
+          required: false
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummaryPageResponse'
 
   # Discovery & Recommendations
   /v1/discovery/recommendation:
@@ -553,6 +583,37 @@ paths:
                 items:
                   $ref: '#/components/schemas/ChatSummaryResponseDto'
 
+  /v1/chats/discover:
+    get:
+      tags:
+        - Чат
+      summary: Поиск публичных групп (Discovery)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Страница публичных групп
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ChatSummaryResponseDto'
+                  totalPages: { type: integer }
+                  totalElements: { type: integer, format: int64 }
+
   /v1/chats/{chatId}:
     get:
       tags:
@@ -590,6 +651,68 @@ paths:
               example:
                 code: CHAT_ACCESS_DENIED
                 message: You are not a member of this chat
+    patch:
+      tags:
+        - Чат
+      summary: Редактирование информации о группе
+      description: Доступно только владельцу (OWNER) чата.
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupChatUpdateRequestDto'
+      responses:
+        '200':
+          description: Чат обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSummaryResponseDto'
+        '403':
+          description: Ошибка прав доступа
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_CHAT_ROLE
+                message: Only chat owner can update group info
+
+  /v1/chats/{chatId}/join:
+    post:
+      tags:
+        - Чат
+      summary: Вступление в публичную группу
+      parameters:
+        - name: chatId
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Пользователь успешно вступил в группу
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatSummaryResponseDto'
+        '400':
+          description: Ошибка вступления (уже в группе или группа приватная)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                code: INVALID_CHAT_OPERATION
+                message: Cannot join this chat
 
   /v1/chats/direct:
     post:
@@ -1236,6 +1359,7 @@ components:
         id: { type: integer, format: int64 }
         type: { $ref: '#/components/schemas/ChatType' }
         title: { type: string }
+        isPublic: { type: boolean }
         createdBy: { type: integer, format: int64 }
         createdAt: { type: string, format: date-time }
         members: { type: array, items: { $ref: '#/components/schemas/ChatMemberResponseDto' } }
@@ -1284,7 +1408,14 @@ components:
       required: [title, memberIds]
       properties:
         title: { type: string, maxLength: 120 }
+        isPublic: { type: boolean }
         memberIds: { type: array, items: { type: integer, format: int64 }, minItems: 1 }
+
+    GroupChatUpdateRequestDto:
+      type: object
+      properties:
+        title: { type: string, maxLength: 120 }
+        isPublic: { type: boolean }
 
     MessageSendRequestDto:
       type: object
@@ -1307,6 +1438,7 @@ components:
         firstName: { type: string }
         lastName: { type: string }
         email: { type: string, format: email }
+        avatarUrl: { type: string }
         blocked: { type: boolean }
         createdAt: { type: string, format: date-time }
 
@@ -1379,6 +1511,7 @@ components:
         - REFRESH_TOKEN_REVOKED
         - CHAT_NOT_FOUND
         - CHAT_ACCESS_DENIED
+        - INVALID_CHAT_ROLE
         - INVALID_CHAT_OPERATION
         - INVALID_ADMIN_OPERATION
         - INVALID_AVATAR_FILE
