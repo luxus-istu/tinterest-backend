@@ -9,6 +9,7 @@ import com.luxus.tinterest.entity.UserSwipe;
 import com.luxus.tinterest.enums.Reaction;
 import com.luxus.tinterest.repository.*;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RecommendationService {
 
     private final RecommendationRepository recommendationRepository;
@@ -94,6 +96,7 @@ public class RecommendationService {
     }
 
     private void buildRecommendations(String key, Long userId) {
+        log.info("Building recommendations cache for user: {}", userId);
         List<Long> sortedIds = recommendationRepository.computeSortedFeedIds(userId);
         redis.delete(key);
         if (!sortedIds.isEmpty()) {
@@ -135,6 +138,8 @@ public class RecommendationService {
     public SwipeResponse swipe(Long fromUserId, SwipeRequest request) {
         Long toUserId = request.getToUserId();
 
+        log.debug("User {} swiped on user {}: reaction {}", fromUserId, toUserId, request.getReaction());
+
         UserSwipe swipe = new UserSwipe();
         swipe.setFromUserId(fromUserId);
         swipe.setToUserId(toUserId);
@@ -157,6 +162,7 @@ public class RecommendationService {
                     .build();
         }
 
+        log.info("Mutual LIKE detected between user {} and user {}. Creating match and chat.", fromUserId, toUserId);
         Match match = new Match();
         match.setUserId1(fromUserId);
         match.setUserId2(toUserId);

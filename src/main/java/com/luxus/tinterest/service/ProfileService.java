@@ -14,6 +14,7 @@ import com.luxus.tinterest.exception.profile.UnknownInterestsException;
 import com.luxus.tinterest.repository.InterestRepository;
 import com.luxus.tinterest.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ProfileService {
 
     private final UserRepository userRepository;
@@ -49,53 +51,75 @@ public class ProfileService {
 
     @Transactional
     public ProfileResponseDto completeProfile(Long userId, CompleteProfileRequestDto request) {
+        log.info("Completing profile for user: {}", userId);
         User user = loadUserWithInterests(userId);
         applyQuestionnaireInfo(user, request.city(), request.about());
         applyWorkInfo(user, request.jobTitle(), request.department());
         applyCommunicationPreferences(user, request.goal(), request.personalityType(), request.timeSlots());
         replaceInterests(user, request.interests());
         user.setHasFilledProfile(true);
-        return toProfileResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        log.info("Profile completed successfully for user: {}", userId);
+        return toProfileResponse(saved);
     }
 
     @Transactional
     public ProfileResponseDto updateBasic(Long userId, BasicProfileUpdateRequestDto request) {
+        log.info("Updating basic info for user: {}", userId);
         User user = loadUserWithInterests(userId);
         applyBasicInfo(user, request.firstName(), request.lastName(), request.middleName(), request.dateOfBirth(),
                 request.gender(), request.language(), request.city(), request.about());
-        return toProfileResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        log.info("Basic info updated successfully for user: {}", userId);
+        return toProfileResponse(saved);
     }
 
     @Transactional
     public ProfileResponseDto updateWork(Long userId, WorkInfoUpdateRequestDto request) {
+        log.info("Updating work info for user: {}", userId);
         User user = loadUserWithInterests(userId);
         applyWorkInfo(user, request.jobTitle(), request.department());
-        return toProfileResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        log.info("Work info updated successfully for user: {}", userId);
+        return toProfileResponse(saved);
     }
 
     @Transactional
     public ProfileResponseDto updateCommunication(Long userId, CommunicationPreferencesUpdateRequestDto request) {
+        log.info("Updating communication preferences for user: {}", userId);
         User user = loadUserWithInterests(userId);
         applyCommunicationPreferences(user, request.goal(), request.personalityType(), request.timeSlots());
-        return toProfileResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        log.info("Communication preferences updated successfully for user: {}", userId);
+        return toProfileResponse(saved);
     }
 
     @Transactional
     public ProfileResponseDto updateInterests(Long userId, InterestsUpdateRequestDto request) {
+        log.info("Updating interests for user: {}", userId);
         User user = loadUserWithInterests(userId);
         replaceInterests(user, request.interests());
-        return toProfileResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        log.info("Interests updated successfully for user: {}", userId);
+        return toProfileResponse(saved);
     }
 
     @Transactional
     public ProfileResponseDto uploadAvatar(Long userId, MultipartFile file) {
+        log.info("Uploading avatar for user: {}", userId);
         User user = loadUserWithInterests(userId);
-        user.setAvatarUrl(minioStorageService.uploadAvatar(file, userId, user.getAvatarUrl()));
-        return toProfileResponse(userRepository.save(user));
+        String avatarUrl = minioStorageService.uploadAvatar(file, userId, user.getAvatarUrl());
+        user.setAvatarUrl(avatarUrl);
+        User saved = userRepository.save(user);
+        log.info("Avatar uploaded successfully for user: {}. URL: {}", userId, avatarUrl);
+        return toProfileResponse(saved);
     }
 
     private User loadUserWithInterests(Long userId) {
-        return userRepository.findWithInterestsById(userId).orElseThrow(UserNotFoundException::new);
+        return userRepository.findWithInterestsById(userId).orElseThrow(() -> {
+            log.warn("User not found: {}", userId);
+            return new UserNotFoundException();
+        });
     }
 
     private void applyBasicInfo(User user, String firstName, String lastName, String middleName,
@@ -152,6 +176,7 @@ public class ProfileService {
         }
 
         if (!unknownInterests.isEmpty()) {
+            log.warn("Unknown interests provided: {}", unknownInterests);
             throw new UnknownInterestsException(unknownInterests);
         }
 

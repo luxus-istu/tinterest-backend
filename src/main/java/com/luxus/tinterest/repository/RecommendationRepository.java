@@ -63,18 +63,18 @@ public class RecommendationRepository {
             """;
 
         return jdbcTemplate.queryForList(sql, Long.class,
-                userId,  // u.id !=
-                userId,  // LIKE подзапрос
-                userId,  // DISLIKE подзапрос
-                userId,  // matches CASE WHEN
-                userId,  // matches WHERE user_id_1
-                userId,  // matches WHERE user_id_2
-                userId,  // COUNT интересов
-                userId,  // goal
-                userId,  // city
-                userId,  // department
-                userId,  // personality_type EXTROVERT
-                userId   // personality_type INTROVERT
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId,
+                userId
         );
     }
 

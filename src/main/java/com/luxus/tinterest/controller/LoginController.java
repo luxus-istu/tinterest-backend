@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -27,12 +28,14 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/v1")
 @RequiredArgsConstructor
+@Slf4j
 public class LoginController {
 
     private final AuthService authService;
 
     @PostMapping("/auth/login")
     public ResponseEntity<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto, HttpServletResponse response) {
+        log.info("Login attempt for email: {}", requestDto.getEmail());
         Map<String, String> tokens = authService.login(requestDto);
 
         ResponseCookie refreshCookie = ResponseCookie
@@ -46,13 +49,17 @@ public class LoginController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
-
+        log.info("Successful login for email: {}", requestDto.getEmail());
         return ResponseEntity.ok(new LoginResponseDto(tokens.get("accessToken")));
     }
 
     @PostMapping("/auth/refresh")
     public ResponseEntity<RefreshResponseDto> refresh(HttpServletRequest request, HttpServletResponse response) {
-        String refreshToken = extractRefreshCookie(request).orElseThrow(InvalidRefreshTokenException::new);
+        log.info("Token refresh requested");
+        String refreshToken = extractRefreshCookie(request).orElseThrow(() -> {
+            log.warn("Refresh token cookie is missing");
+            return new InvalidRefreshTokenException();
+        });
 
         Map<String, String> tokens = authService.refresh(refreshToken);
 
@@ -67,12 +74,17 @@ public class LoginController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
+        log.info("Token successfully refreshed");
         return ResponseEntity.ok(new RefreshResponseDto(tokens.get("accessToken")));
     }
 
     @PostMapping("/auth/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-        extractRefreshCookie(request).ifPresent(authService::logout);
+        log.info("Logout requested");
+        extractRefreshCookie(request).ifPresent(token -> {
+            authService.logout(token);
+            log.info("Successfully logged out from service");
+        });
 
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .httpOnly(true)

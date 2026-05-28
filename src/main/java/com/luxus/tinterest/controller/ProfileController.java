@@ -9,6 +9,7 @@ import com.luxus.tinterest.dto.profile.WorkInfoUpdateRequestDto;
 import com.luxus.tinterest.service.ProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -26,58 +27,68 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/v1/profiles")
 @RequiredArgsConstructor
+@Slf4j
 public class ProfileController {
 
     private final ProfileService profileService;
 
     @GetMapping("/me")
     public ResponseEntity<ProfileResponseDto> getMyProfile(@AuthenticationPrincipal Long userId) {
+        log.info("User {} requested their profile", userId);
         return ResponseEntity.ok(profileService.getMyProfile(requireUserId(userId)));
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<ProfileResponseDto> getProfile(@PathVariable Long userId) {
+        log.info("Request to view profile of user: {}", userId);
         return ResponseEntity.ok(profileService.getProfile(userId));
     }
 
     @PutMapping("/me/complete")
     public ResponseEntity<ProfileResponseDto> completeProfile(@AuthenticationPrincipal Long userId,
                                                               @Valid @RequestBody CompleteProfileRequestDto request) {
+        log.info("User {} completing their profile", userId);
         return ResponseEntity.ok(profileService.completeProfile(requireUserId(userId), request));
     }
 
     @PutMapping("/me/basic")
     public ResponseEntity<ProfileResponseDto> updateBasic(@AuthenticationPrincipal Long userId,
                                                           @Valid @RequestBody BasicProfileUpdateRequestDto request) {
+        log.info("User {} updating basic profile info", userId);
         return ResponseEntity.ok(profileService.updateBasic(requireUserId(userId), request));
     }
 
     @PutMapping("/me/work")
     public ResponseEntity<ProfileResponseDto> updateWork(@AuthenticationPrincipal Long userId,
                                                          @Valid @RequestBody WorkInfoUpdateRequestDto request) {
+        log.info("User {} updating work info", userId);
         return ResponseEntity.ok(profileService.updateWork(requireUserId(userId), request));
     }
 
     @PutMapping("/me/communication")
     public ResponseEntity<ProfileResponseDto> updateCommunication(@AuthenticationPrincipal Long userId,
                                                                   @Valid @RequestBody CommunicationPreferencesUpdateRequestDto request) {
+        log.info("User {} updating communication preferences", userId);
         return ResponseEntity.ok(profileService.updateCommunication(requireUserId(userId), request));
     }
 
     @PutMapping("/me/interests")
     public ResponseEntity<ProfileResponseDto> updateInterests(@AuthenticationPrincipal Long userId,
                                                               @Valid @RequestBody InterestsUpdateRequestDto request) {
+        log.info("User {} updating interests", userId);
         return ResponseEntity.ok(profileService.updateInterests(requireUserId(userId), request));
     }
 
     @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProfileResponseDto> uploadAvatar(@AuthenticationPrincipal Long userId,
                                                            @RequestPart("file") MultipartFile file) {
+        log.info("User {} uploading new avatar", userId);
         return ResponseEntity.ok(profileService.uploadAvatar(requireUserId(userId), file));
     }
 
     private Long requireUserId(Long userId) {
         if (userId == null) {
+            log.warn("Access denied: Authenticated user is missing");
             throw new AccessDeniedException("Authenticated user is missing");
         }
         return userId;

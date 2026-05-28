@@ -5,6 +5,7 @@ import com.luxus.tinterest.enums.Gender;
 import com.luxus.tinterest.repository.MatchRepository;
 import com.luxus.tinterest.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminStatisticsService {
 
     private final UserRepository userRepository;
@@ -24,9 +26,10 @@ public class AdminStatisticsService {
 
     @Transactional(readOnly = true)
     public AdminStatisticsResponseDto getStatistics() {
+        log.info("Calculating system statistics...");
         Instant now = Instant.now();
         
-        return AdminStatisticsResponseDto.builder()
+        AdminStatisticsResponseDto stats = AdminStatisticsResponseDto.builder()
                 .totalUsers(userRepository.count())
                 .totalMatches(matchRepository.count())
                 .registrationDynamics(AdminStatisticsResponseDto.UserRegistrationDynamicsDto.builder()
@@ -38,6 +41,9 @@ public class AdminStatisticsService {
                 .topCities(mapResultToMap(userRepository.findTopCities(10)))
                 .topInterests(mapResultToMap(userRepository.findTopInterests(10)))
                 .build();
+        
+        log.info("Statistics calculated: {} users, {} matches", stats.getTotalUsers(), stats.getTotalMatches());
+        return stats;
     }
 
     private Map<String, Long> getGenderDistribution() {

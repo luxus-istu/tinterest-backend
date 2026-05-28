@@ -24,6 +24,7 @@ public class RecommendationController {
 
     @GetMapping("/recommendation")
     public ResponseEntity<RecommendationResponse> getRecommendations(@AuthenticationPrincipal Long userId, @RequestParam(defaultValue = "10") int limit) {
+        log.info("Requesting recommendations for user: {}, limit: {}", userId, limit);
         return ResponseEntity.ok(
                 recommendationService.getRecommendations(userId, limit)
         );
@@ -35,6 +36,7 @@ public class RecommendationController {
             @ModelAttribute RecommendationFiltersDto filters,
             @RequestParam(defaultValue = "0")  @Min(0) int page,
             @RequestParam(defaultValue = "10") @Min(1) int limit) {
+        log.info("Requesting filtered recommendations for user: {}, filters: {}, page: {}, limit: {}", userId, filters, page, limit);
         return ResponseEntity.ok(
                 recommendationService.getRecommendationsWithFilters(userId, filters, page, limit)
         );
@@ -42,7 +44,7 @@ public class RecommendationController {
 
     @PostMapping("/swipe")
     public ResponseEntity<SwipeResponse> swipe(@AuthenticationPrincipal Long userId, @Valid @RequestBody SwipeRequest request) {
-        log.info("Полученные данные на эндпоинте /swipe:  userId {} reaction {}", request.getToUserId(), request.getReaction());
+        log.info("User {} performed swipe on user {}: reaction {}", userId, request.getToUserId(), request.getReaction());
         return ResponseEntity.ok(
                 recommendationService.swipe(userId, request)
         );
