@@ -1,3 +1,31 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    defer-datasource-initialization: true
+    generate-ddl: true
+    properties:
+      hibernate:
+        globally_quoted_identifiers: false
+  sql:
+    init:
+      mode: always
+  flyway:
+    enabled: false
+  mail:
+    host: localhost
+    port: 1025
+    username: test
+    password: test
+    protocol: smtp
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+
 server:
   ssl:
     enabled: false
@@ -8,3 +36,15 @@ app:
   jwt:
     private-key: classpath:test-keys/private.pem
     public-key: classpath:test-keys/public.pem
+  minio:
+    endpoint: http://localhost:9000
+    public-endpoint: http://localhost:9000
+    access-key: minioadmin
+    secret-key: minioadmin
+    bucket: tinterest-images
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.tool.schema: TRACE
+    org.hibernate.type.descriptor.sql: TRACE

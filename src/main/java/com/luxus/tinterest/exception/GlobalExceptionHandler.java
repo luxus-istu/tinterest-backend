@@ -1,7 +1,6 @@
 package com.luxus.tinterest.exception;
 
 import com.luxus.tinterest.exception.common.UserNotFoundException;
-import com.luxus.tinterest.exception.registration.UserAlreadyRegisteredException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
