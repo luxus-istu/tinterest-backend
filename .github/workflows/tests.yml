@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -39,3 +42,36 @@ jobs:
         with:
           name: allure-results
           path: target/allure-results
+
+  reports:
+    if: always()  # Джоба будет выполнена вне зависимости от успеха или неуспеха run-tests
+    needs: [ run-tests ]  # Выполняется после успешного (или завершённого) run-tests
+    runs-on: ubuntu-latest  # Тоже запускается в Ubuntu
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4  # Клонируем репозиторий
+        with:
+          ref: gh-pages  # Клонируем ветку gh-pages
+          path: gh-pages  # Указываем путь, куда клонировать
+
+      - name: Download Allure results
+        uses: actions/download-artifact@v4  # Загружаем ранее загруженные результаты
+        with:
+          name: allure-results  # Имя артефакта
+          path: allure-results  # Путь куда распаковать
+
+      - name: Allure Report action from marketplace
+        uses: simple-elf/allure-report-action@v1.12  # Генерируем Allure-отчёт
+        if: always()  # Выполняем даже при ошибке
+        with:
+          allure_results: allure-results  # Путь к результатам
+          allure_history: allure-history  # Папка с историей отчётов (для графиков и сравнения)
+
+      - name: Deploy report to Github Pages
+        if: always()  # Выполняем даже если предыдущие шаги упали
+        uses: peaceiris/actions-gh-pages@v4  # Деплой на GitHub Pages
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}  # Используем встроенный GitHub токен
+          publish_branch: gh-pages  # Ветка для публикации отчёта
+          publish_dir: allure-history  # Папка с готовым HTML отчётом
