@@ -145,7 +145,7 @@ class RecommendationServiceTests {
         savedMatch.setId(10L);
         when(matchRepository.save(any())).thenReturn(savedMatch);
 
-        ChatSummaryResponseDto chatSummary = new ChatSummaryResponseDto(5L, null, null, 1L, null, List.of(), null, 0);
+        ChatSummaryResponseDto chatSummary = new ChatSummaryResponseDto(5L, null, null, false, 1L, null, List.of(), null, 0L);
         when(chatService.createOrGetDirectChat(1L, 2L)).thenReturn(chatSummary);
 
         SwipeResponse response = recommendationService.swipe(1L, request);

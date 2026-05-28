@@ -76,7 +76,7 @@ class ChatServiceTests {
         when(userRepository.findById(1L)).thenReturn(Optional.of(currentUser));
         when(userRepository.findAllById(Set.of(2L, 3L))).thenReturn(List.of(User.builder().id(2L).build()));
 
-        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Team", Set.of(2L, 3L));
+        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Team", false, Set.of(2L, 3L));
 
         assertThrows(InvalidChatOperationException.class,
                 () -> chatService.createGroupChat(1L, request));
@@ -144,7 +144,7 @@ class ChatServiceTests {
 
     @Test
     void createGroupChatRejectsSingleInvitedMember() {
-        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", Set.of(2L));
+        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", false, Set.of(2L));
 
         InvalidChatOperationException exception = assertThrows(
                 InvalidChatOperationException.class,
@@ -157,7 +157,7 @@ class ChatServiceTests {
 
     @Test
     void createGroupChatDoesNotCountCurrentUserAsInvitedMember() {
-        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", Set.of(1L, 2L));
+        GroupChatCreateRequestDto request = new GroupChatCreateRequestDto("Small group", false, Set.of(1L, 2L));
 
         InvalidChatOperationException exception = assertThrows(
                 InvalidChatOperationException.class,

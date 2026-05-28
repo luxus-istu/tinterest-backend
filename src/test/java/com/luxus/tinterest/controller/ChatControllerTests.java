@@ -113,6 +113,7 @@ class ChatControllerTests {
             chatId,
             ChatType.DIRECT,
             "Chat Title",
+            false,
             1L,
             LocalDateTime.now(),
             List.of(),
@@ -301,7 +302,7 @@ class ChatControllerTests {
     void testCreateGroupChatSuccess() throws Exception {
         mockAuthenticationPrincipal(1L);
         GroupChatCreateRequestDto request = new GroupChatCreateRequestDto(
-                "Friends Group", Set.of(2L, 3L)
+                "Friends Group", false, Set.of(2L, 3L)
         );
         ChatSummaryResponseDto response = createSampleChat(1L);
         when(chatService.createGroupChat(eq(1L), any(GroupChatCreateRequestDto.class))).thenReturn(response);
@@ -322,7 +323,7 @@ class ChatControllerTests {
     void testCreateGroupChatWithoutName() throws Exception {
         mockAuthenticationPrincipal(1L);
         GroupChatCreateRequestDto request = new GroupChatCreateRequestDto(
-                null, Set.of(2L, 3L)
+                null, false, Set.of(2L, 3L)
         );
 
         mockMvc.perform(post("/v1/chats/groups")
@@ -336,7 +337,7 @@ class ChatControllerTests {
     void testCreateGroupChatNoMembers() throws Exception {
         mockAuthenticationPrincipal(1L);
         GroupChatCreateRequestDto request = new GroupChatCreateRequestDto(
-                "Friends Group", Set.of()
+                "Friends Group", false, Set.of()
         );
 
         mockMvc.perform(post("/v1/chats/groups")
@@ -349,7 +350,7 @@ class ChatControllerTests {
     @DisplayName("Should return 401 when creating group chat without authentication")
     void testCreateGroupChatWithoutAuthentication() throws Exception {
         GroupChatCreateRequestDto request = new GroupChatCreateRequestDto(
-                "Friends Group", Set.of(2L, 3L)
+                "Friends Group", false, Set.of(2L, 3L)
         );
 
         mockMvc.perform(post("/v1/chats/groups").with(unauthorized())

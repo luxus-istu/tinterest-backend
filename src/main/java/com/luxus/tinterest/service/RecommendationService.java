@@ -160,7 +160,7 @@ public class RecommendationService {
         Match match = new Match();
         match.setUserId1(fromUserId);
         match.setUserId2(toUserId);
-        matchRepository.save(match);
+        match = matchRepository.save(match);
 
         ChatSummaryResponseDto chatDto = chatService.createOrGetDirectChat(fromUserId, toUserId);
 
