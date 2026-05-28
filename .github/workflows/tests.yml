@@ -45,7 +45,7 @@ jobs:
 
   reports:
     if: always()  # Джоба будет выполнена вне зависимости от успеха или неуспеха run-tests
-    needs: [ run-tests ]  # Выполняется после успешного (или завершённого) run-tests
+    needs: [ test ]  # Выполняется после успешного (или завершённого) run-tests
     runs-on: ubuntu-latest  # Тоже запускается в Ubuntu
 
     steps:
