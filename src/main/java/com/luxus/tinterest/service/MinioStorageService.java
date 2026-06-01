@@ -77,7 +77,7 @@ public class MinioStorageService {
         String contentType = file.getContentType();
         if (contentType == null || !CONTENT_TYPE_TO_EXTENSION.containsKey(contentType.toLowerCase(Locale.ROOT))) {
             log.warn("Avatar upload failed: unsupported content type {}", contentType);
-            throw new InvalidAvatarFileException("Only JPG, PNG and WEBP images are supported");
+            throw new InvalidAvatarFileException("Only JPG, PNG images are supported");
         }
     }
 

@@ -6,11 +6,14 @@ import com.luxus.tinterest.exception.verify.EmailAlreadyVerifiedException;
 import com.luxus.tinterest.exception.verify.InvalidVerificationCodeException;
 import com.luxus.tinterest.exception.verify.TooManyAttemptsException;
 import com.luxus.tinterest.exception.verify.VerificationCodeExpiredException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class EmailVerificationHandler {
 
     @ExceptionHandler(InvalidVerificationCodeException.class)

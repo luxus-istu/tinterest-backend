@@ -81,7 +81,7 @@ public class ProfileController {
 
     @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProfileResponseDto> uploadAvatar(@AuthenticationPrincipal Long userId,
-                                                           @RequestPart("file") MultipartFile file) {
+                                                           @RequestPart(value = "file", required = false) MultipartFile file) {
         log.info("User {} uploading new avatar", userId);
         return ResponseEntity.ok(profileService.uploadAvatar(requireUserId(userId), file));
     }
