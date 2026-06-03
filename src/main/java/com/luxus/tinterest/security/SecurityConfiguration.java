@@ -4,6 +4,7 @@ package com.luxus.tinterest.security;
 import com.luxus.tinterest.security.filter.JwtAuthenticationFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -25,6 +26,9 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfiguration {
 
+    @Value("${app.cors.allowed-origins:*}")
+    private List<String> allowedOrigins;
+
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
@@ -44,6 +48,7 @@ public class SecurityConfiguration {
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/v1/auth/**").permitAll()
+                        .requestMatchers("/v1/public/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/error").permitAll()
                         .requestMatchers("/v1/admin/**").hasRole("ADMIN")
@@ -68,12 +73,7 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-                "http://localhost:3000",
-                "http://127.0.0.1:3000"
-        ));
+        config.setAllowedOrigins(allowedOrigins);
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
